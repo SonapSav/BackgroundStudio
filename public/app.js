@@ -29,6 +29,18 @@ const SECTIONS = [
     custom: { key: "sceneText", ph: "Describe the scene — e.g. rain-soaked rooftop overlooking a neon skyline" },
   },
   {
+    title: "Objects & Props", hint: "furniture · vehicles · decor", open: false,
+    groups: [{ key: "props", label: "Accessories in the scene", pills: [
+      "Couch", "Armchair", "Desk", "Office chair", "Bookshelf", "Coffee table", "Bed", "Stool",
+      "Cabinet", "Rug", "Table lamp", "Floor lamp", "Neon sign", "String lights", "Chandelier",
+      "Candles", "Fireplace", "TV", "Monitor setup", "Microphone", "Studio camera", "Speakers",
+      "Gaming setup", "Potted plant", "Hanging plants", "Flowers", "Framed art", "Posters",
+      "Mirror", "Wall clock", "Curtains", "Vase", "Stack of books", "Guitar", "Piano",
+      "Vinyl records", "Globe", "Coffee cup", "Car", "Sports car", "Motorcycle", "Bicycle", "Boat",
+    ] }],
+    custom: { key: "propsText", ph: "Other objects, comma-separated — e.g. vintage radio, ladder" },
+  },
+  {
     title: "Style & Medium", hint: "look · rendering", open: true,
     groups: [{ key: "style", label: "Medium / style", pills: [
       "Photorealistic", "Cinematic film still", "Studio photography", "3D render", "Octane render",
@@ -180,6 +192,9 @@ function buildPrompt() {
   } else if (styleAll.length) {
     parts.push(cap(styleAll.join(", ")));
   }
+
+  const props = [...selected("props"), ...splitCsv(state.text.propsText)];
+  if (props.length) parts.push(`featuring ${props.map((s) => s.toLowerCase()).join(", ")}`);
 
   const lighting = selected("lighting");
   if (lighting.length) parts.push(`${lighting.join(", ").toLowerCase()} lighting`);
