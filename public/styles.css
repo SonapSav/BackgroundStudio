@@ -289,8 +289,8 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 .card .seed:hover { color: var(--text); }
 
 .seed-row { display: flex; gap: 8px; align-items: center; }
-.seed-row input { width: 122px; height: 32px; padding: 0 11px; font-size: 12.5px; font-family: var(--mono); font-variant-numeric: tabular-nums; }
-.seed-row .btn { flex: none; height: 32px; padding: 0 10px; }
+.seed-row input { width: 116px; height: 32px; padding: 0 8px; font-size: 12.5px; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.seed-row .btn { flex: none; height: 32px; padding: 0 7px; }
 
 .empty { color: var(--faint); text-align: center; padding: 40px 10px; font-size: 13px; }
 
