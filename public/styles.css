@@ -171,6 +171,9 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 .field { margin-bottom: 14px; }
 .controls-row { display: flex; flex-wrap: wrap; gap: 16px 30px; align-items: flex-start; }
 .controls-row .control { min-width: 0; }
+/* fixed label height so the monospace "blank = random" hint can't inflate the seed
+   label taller than the others and push its content down on wide (single-row) screens */
+.controls-row .microlabel { height: 18px; line-height: 18px; white-space: nowrap; }
 /* content rows sit at their natural 28px and top-align; center the shorter toggle to match */
 .controls-row .switch { min-height: 28px; align-items: center; }
 
