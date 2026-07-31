@@ -1,18 +1,18 @@
 // The ONE module that talks to OpenRouter. Everything model-specific lives here
-// so the rest of the app never needs to know the wire format. If OpenRouter's
-// dedicated /api/v1/images endpoint becomes the better path later, only this
-// file changes — the exported generateImage() signature stays the same.
+// so the rest of the app never needs to know the wire format.
+//
+// Uses OpenRouter's dedicated Image API (/api/v1/images), which — unlike the
+// chat-completions path — honors real `resolution` (1K/2K/4K) and `aspect_ratio`
+// params, and supports editing/compositing via `input_references`. Verified:
+//   2K 16:9 -> 2752x1536, 4K 16:9 -> 5504x3072, edit w/ reference -> full res.
 
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const IMAGES_URL = "https://openrouter.ai/api/v1/images";
 export const MODEL = "google/gemini-3-pro-image-preview"; // Nano Banana Pro
 
-// Build the text instruction we send alongside any images. Aspect ratio and
-// resolution are conveyed as prompt hints (Nano Banana Pro honors these), and
-// the keying-safe steer keeps backgrounds off the chroma-key hues.
-export function composePrompt({ prompt, aspectRatio, resolution, keyingSafe }) {
+// The prompt carries only creative direction now; size/ratio are real params.
+// The keying-safe steer keeps backgrounds off the chroma-key hues.
+export function composePrompt({ prompt, keyingSafe }) {
   const parts = [prompt.trim()];
-  if (aspectRatio) parts.push(`Aspect ratio ${aspectRatio}.`);
-  if (resolution) parts.push(`Render at ${resolution} resolution, high detail.`);
   if (keyingSafe) {
     parts.push(
       "This image is a background that will be composited behind green-screen " +
@@ -23,8 +23,10 @@ export function composePrompt({ prompt, aspectRatio, resolution, keyingSafe }) {
   return parts.join(" ");
 }
 
-// images: array of data-URI strings ("data:image/png;base64,...") — reference
-// images, a base image being adjusted, and/or object photos to add.
+// images: array of data-URI strings ("data:image/...;base64,...") — reference
+// images, a base image being adjusted, and/or object photos to add. When present
+// they become `input_references`, which makes this an edit/compose instead of a
+// pure text-to-image generation.
 export async function generateImage({
   prompt,
   images = [],
@@ -44,25 +46,25 @@ export async function generateImage({
     throw err;
   }
 
-  const content = [
-    { type: "text", text: composePrompt({ prompt, aspectRatio, resolution, keyingSafe }) },
-    ...images.map((url) => ({ type: "image_url", image_url: { url } })),
-  ];
+  const body = {
+    model: MODEL,
+    prompt: composePrompt({ prompt, keyingSafe }),
+  };
+  if (aspectRatio) body.aspect_ratio = aspectRatio;
+  if (resolution) body.resolution = resolution;
+  if (images.length) {
+    body.input_references = images.map((url) => ({ type: "image_url", image_url: { url } }));
+  }
 
-  const res = await fetch(OPENROUTER_URL, {
+  const res = await fetch(IMAGES_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      // Optional attribution headers OpenRouter recommends for app ranking.
       "HTTP-Referer": "http://localhost",
       "X-Title": "BackgroundStudio",
     },
-    body: JSON.stringify({
-      model: MODEL,
-      modalities: ["image", "text"],
-      messages: [{ role: "user", content }],
-    }),
+    body: JSON.stringify(body),
   });
 
   const text = await res.text();
@@ -83,35 +85,27 @@ export async function generateImage({
     throw err;
   }
 
-  const message = data?.choices?.[0]?.message ?? {};
-  const dataUri = message?.images?.[0]?.image_url?.url;
-  if (!dataUri || typeof dataUri !== "string" || !dataUri.startsWith("data:")) {
-    const err = new Error(
-      "No image was returned by the model. It may have replied with text only: " +
-        String(message?.content || "").slice(0, 300)
-    );
+  const d = data?.data?.[0];
+  const b64 = extractBase64(d);
+  if (!b64) {
+    const err = new Error("No image was returned by the model.");
     err.code = "NO_IMAGE";
     throw err;
   }
 
-  const { bytes, mediaType } = decodeDataUri(dataUri);
   return {
-    bytes,
-    mediaType,
+    bytes: Buffer.from(b64, "base64"),
+    mediaType: d?.media_type || "image/jpeg",
     cost: typeof data?.usage?.cost === "number" ? data.usage.cost : null,
-    rawText: typeof message?.content === "string" ? message.content : "",
+    rawText: "",
   };
 }
 
-// "data:image/png;base64,AAAA..." -> { bytes: Buffer, mediaType: "image/png" }
-export function decodeDataUri(dataUri) {
-  const match = /^data:([^;,]+)?(;base64)?,(.*)$/s.exec(dataUri);
-  if (!match) throw new Error("Malformed data URI.");
-  const mediaType = match[1] || "image/png";
-  const isBase64 = Boolean(match[2]);
-  const payload = match[3];
-  const bytes = isBase64
-    ? Buffer.from(payload, "base64")
-    : Buffer.from(decodeURIComponent(payload), "utf8");
-  return { bytes, mediaType };
+// The Image API returns base64 in `b64_json`; tolerate a data-URI `url` too.
+function extractBase64(d) {
+  if (!d) return null;
+  if (typeof d.b64_json === "string") return d.b64_json;
+  const url = d.url || d.image_url?.url;
+  if (typeof url === "string" && url.startsWith("data:")) return url.split(",")[1];
+  return null;
 }

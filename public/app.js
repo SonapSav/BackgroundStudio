@@ -115,8 +115,8 @@ SECTIONS.forEach((s) => s.groups.forEach((g) => { PILLS[g.key] = g.pills; }));
 const ASPECTS = ["16:9", "9:16", "1:1"];
 const RESOLUTIONS = ["1K", "2K", "4K"];
 const COUNTS = ["1", "2", "3", "4"];
-// Rough per-image estimates (USD). Actual cost is returned by the API and shown per image.
-const EST_COST = { "1K": 0.10, "2K": 0.13, "4K": 0.24 };
+// Rough per-image estimates (USD), from observed /images pricing. Actual cost is returned per image.
+const EST_COST = { "1K": 0.13, "2K": 0.14, "4K": 0.24 };
 
 /* ---- State ---- */
 const state = {
