@@ -380,17 +380,30 @@ function renderThumbs() {
 }
 
 /* ---- Preview / Generate / Adjust ---- */
+function endDot(s) { s = (s || "").trim(); return s && !/[.!?]$/.test(s) ? s + "." : s; }
+// Final prompt = your pills AND your typed text, combined. Avoids double-counting
+// pills that are already present in the box (e.g. after you clicked Preview).
+function composeFinalPrompt() {
+  const pills = buildPrompt();
+  const box = el.promptOut.value.trim();
+  if (!box) return pills;
+  if (!pills) return endDot(box);
+  if (box.includes(pills)) return endDot(box); // pills already merged into the box
+  // Adjust: your instruction leads, pill modifiers follow. Generate: pill scene leads, your text follows.
+  const [first, second] = state.mode === "adjust" ? [box, pills] : [pills, box];
+  return `${endDot(first)} ${second}`;
+}
 function preview() {
-  const p = buildPrompt();
-  if (!p) { toast("Pick some pills or type a scene first.", true); return; }
+  const p = composeFinalPrompt();
+  if (!p) { toast("Pick some pills or type a prompt first.", true); return; }
   el.promptOut.value = p;
-  toast("Prompt assembled — edit freely before generating.");
+  toast("Prompt assembled — pills + your text combined. Edit freely before generating.");
 }
 async function go() {
   if (state.busy) return;
-  let prompt = el.promptOut.value.trim();
-  if (!prompt) { prompt = buildPrompt(); el.promptOut.value = prompt; }
+  const prompt = composeFinalPrompt();
   if (!prompt) { toast("Add a prompt — pick pills or type one.", true); el.promptOut.focus(); return; }
+  el.promptOut.value = prompt; // reflect exactly what will be sent
 
   setBusy(true);
   try {
@@ -421,6 +434,7 @@ async function go() {
 
     state.uploads = [];
     renderThumbs();
+    el.promptOut.value = ""; // clear so pills+text don't accumulate on the next run
     setMode("generate");
     state.page = 1; // jump to the page showing the newest result
     await loadLibrary();
