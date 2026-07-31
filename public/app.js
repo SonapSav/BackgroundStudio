@@ -183,6 +183,8 @@ const el = {
   lbStage: $("lbStage"), lbOverlay: $("lbOverlay"), lbGrid: $("lbGrid"), lbSubject: $("lbSubject"),
   guideToggle: $("guideToggle"), lbGuideCtrls: $("lbGuideCtrls"), subjSize: $("subjSize"),
   subjFlip: $("subjFlip"), gridToggle: $("gridToggle"),
+  compareToggle: $("compareToggle"), lbBefore: $("lbBefore"), lbDivider: $("lbDivider"),
+  lbTagBefore: $("lbTagBefore"), lbTagAfter: $("lbTagAfter"),
   dropBar: $("dragDropBar"), dropOptAdjust: $("dropOptAdjust"), dropOptRef: $("dropOptRef"),
   genOverlay: $("genOverlay"), genTitle: $("genTitle"),
   regionRow: $("regionRow"), markRegionBtn: $("markRegionBtn"), regionChip: $("regionChip"),
@@ -882,15 +884,46 @@ function renderGuide() {
   s.style.height = guide.h + "%";
   s.style.transform = `translateX(-50%)${guide.flip ? " scaleX(-1)" : ""}`;
 }
-function toggleGuide() { guide.on = !guide.on; renderGuide(); }
+function toggleGuide() { guide.on = !guide.on; if (guide.on) { cmp.on = false; renderCompare(); } renderGuide(); }
 function setSubjectPos(pos) { guide.x = pos === "left" ? 28 : pos === "right" ? 72 : 50; renderGuide(); }
+
+/* Before/after compare (only for images that have a parent) */
+const cmp = { on: false, pos: 50, parentFile: null };
+function renderCompare() {
+  const active = cmp.on && !!cmp.parentFile;
+  el.lbBefore.hidden = !active;
+  el.lbDivider.hidden = !active;
+  el.lbTagBefore.hidden = !active;
+  el.lbTagAfter.hidden = !active;
+  el.compareToggle.classList.toggle("active", active);
+  if (active) {
+    el.lbBefore.style.clipPath = `inset(0 ${100 - cmp.pos}% 0 0)`;
+    el.lbDivider.style.left = cmp.pos + "%";
+  }
+}
+function toggleCompare() {
+  if (!cmp.parentFile) { toast("No earlier version to compare.", true); return; }
+  cmp.on = !cmp.on;
+  if (cmp.on) { guide.on = false; renderGuide(); el.lbBefore.src = `/library/${cmp.parentFile}`; cmp.pos = 50; }
+  renderCompare();
+}
 function openLightbox(record) {
   el.lightboxImg.src = `/library/${record.file}`;
+  const parent = record.parentId ? state.library.find((r) => r.id === record.parentId) : null;
+  cmp.parentFile = parent ? parent.file : null;
+  cmp.on = false;
+  el.compareToggle.hidden = !cmp.parentFile;
+  renderCompare();
   el.subjSize.value = String(guide.h);
   renderGuide();
   el.lightbox.hidden = false;
 }
-function closeLightbox() { el.lightbox.hidden = true; el.lightboxImg.src = ""; }
+function closeLightbox() {
+  el.lightbox.hidden = true;
+  el.lightboxImg.src = "";
+  el.lbBefore.src = "";
+  cmp.on = false;
+}
 
 /* ---- Config ---- */
 async function loadConfig() {
@@ -1016,6 +1049,22 @@ function init() {
   el.lightboxClose.onclick = closeLightbox;
   el.lightbox.onclick = (e) => { if (e.target === el.lightbox) closeLightbox(); };
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeLightbox(); closeRegionEditor(); } });
+
+  // Before/after compare
+  $("compareIcon").innerHTML = icon("replace", 14);
+  el.compareToggle.onclick = toggleCompare;
+  let cdrag = null;
+  el.lbDivider.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    cdrag = el.lbStage.getBoundingClientRect();
+    try { el.lbDivider.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+  });
+  el.lbDivider.addEventListener("pointermove", (e) => {
+    if (!cdrag) return;
+    cmp.pos = clamp(((e.clientX - cdrag.left) / cdrag.width) * 100, 0, 100);
+    renderCompare();
+  });
+  el.lbDivider.addEventListener("pointerup", () => { cdrag = null; });
 
   // Subject placement guide
   el.lbSubject.innerHTML = SUBJECT_SVG;

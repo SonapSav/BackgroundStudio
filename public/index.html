@@ -180,12 +180,17 @@
   <button class="close" id="lightboxClose" type="button">✕</button>
   <div class="lb-stage" id="lbStage">
     <img id="lightboxImg" alt="" />
+    <img id="lbBefore" class="lb-before" alt="" hidden />
+    <span class="lb-tag lb-tag-before" id="lbTagBefore" hidden>Before</span>
+    <span class="lb-tag lb-tag-after" id="lbTagAfter" hidden>After</span>
+    <div class="lb-divider" id="lbDivider" hidden><span class="lb-handle"></span></div>
     <div class="lb-overlay" id="lbOverlay" hidden>
       <div class="lb-grid" id="lbGrid"></div>
       <div class="subject" id="lbSubject"></div>
     </div>
   </div>
   <div class="lb-tools">
+    <button class="btn small" id="compareToggle" type="button" hidden><span id="compareIcon"></span> Compare</button>
     <button class="btn small" id="guideToggle" type="button"><span id="guideIcon"></span> Subject guide</button>
     <div class="lb-guide-ctrls" id="lbGuideCtrls" hidden>
       <div class="chips">
