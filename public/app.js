@@ -11,6 +11,7 @@ const ICONS = {
   check: `<path d="M20 6 9 17l-5-5"/>`,
   copy: `<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>`,
   grip: `<circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/>`,
+  sparkles: `<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/>`,
 };
 function icon(name, size = 16) {
   return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" ` +
@@ -158,7 +159,7 @@ const el = {
   sections: $("sections"),
   aspectChips: $("aspectChips"), resChips: $("resChips"), countChips: $("countChips"), keyingToggle: $("keyingToggle"),
   clearBtn: $("clearBtn"), resetBtn: $("resetBtn"), previewBtn: $("previewBtn"),
-  goBtn: $("goBtn"), goLabel: $("goLabel"),
+  goBtn: $("goBtn"), goLabel: $("goLabel"), goIcon: $("goIcon"),
   promptOut: $("promptOut"), promptNote: $("promptNote"),
   modeBanner: $("modeBanner"),
   grid: $("grid"), libEmpty: $("libEmpty"), libCount: $("libCount"), refreshBtn: $("refreshBtn"),
@@ -403,6 +404,7 @@ function setMode(mode, base = null) {
   el.clearBtn.hidden = !adjust;
   el.baseLabel.classList.toggle("active", adjust);
   el.goLabel.textContent = adjust ? "Adjust" : "Generate";
+  el.goIcon.innerHTML = icon(adjust ? "wand" : "sparkles", 15);
   el.uploadLabel.innerHTML = adjust
     ? `Objects to add <span class="hint narrow-hide">optional — composited into the adjustment</span>`
     : `Reference images <span class="hint narrow-hide">optional — steers the look</span>`;
