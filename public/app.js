@@ -124,6 +124,9 @@ const state = {
   busy: false,
   sessionCost: 0,
   library: [],
+  sort: "newest",
+  perPage: 12,
+  page: 1,
   sel: {},            // { groupKey: Set(labels) }
   text: {},           // { sceneText, styleText, extraText }
 };
@@ -143,6 +146,7 @@ const el = {
   promptOut: $("promptOut"), promptNote: $("promptNote"),
   modeBanner: $("modeBanner"),
   grid: $("grid"), libEmpty: $("libEmpty"), libCount: $("libCount"), refreshBtn: $("refreshBtn"),
+  sortSel: $("sortSel"), perPageSel: $("perPageSel"), pagination: $("pagination"),
   lightbox: $("lightbox"), lightboxImg: $("lightboxImg"), lightboxClose: $("lightboxClose"),
 };
 
@@ -421,6 +425,7 @@ async function go() {
     state.uploads = [];
     renderThumbs();
     setMode("generate");
+    state.page = 1; // jump to the page showing the newest result
     await loadLibrary();
     toast(wasAdjust ? "Adjustment saved." : "Background generated.");
   } catch (err) {
@@ -451,12 +456,62 @@ async function loadLibrary() {
   } catch { state.library = []; }
   renderLibrary();
 }
-function renderLibrary() {
-  el.grid.innerHTML = "";
-  el.libCount.textContent = state.library.length ? `${state.library.length} image${state.library.length === 1 ? "" : "s"}` : "";
-  el.libEmpty.hidden = state.library.length > 0;
+function sortedLibrary() {
+  const arr = [...state.library]; // server returns newest first
+  if (state.sort === "oldest") arr.reverse();
+  else if (state.sort === "costhigh") arr.sort((a, b) => (b.cost || 0) - (a.cost || 0));
+  return arr;
+}
+// Compact page-number window with ellipses, e.g. [1, "...", 4, 5, 6, "...", 12].
+function pageWindow(cur, pages) {
+  const keep = new Set([1, pages, cur, cur - 1, cur + 1]);
+  const nums = [...keep].filter((p) => p >= 1 && p <= pages).sort((a, b) => a - b);
+  const out = [];
+  let prev = 0;
+  nums.forEach((p) => { if (p - prev > 1) out.push("…"); out.push(p); prev = p; });
+  return out;
+}
+function renderPagination(pages) {
+  el.pagination.innerHTML = "";
+  if (pages <= 1) { el.pagination.hidden = true; return; }
+  el.pagination.hidden = false;
 
-  state.library.forEach((r) => {
+  const mkBtn = (label, page, { active = false, disabled = false } = {}) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "btn small pg" + (active ? " active" : "");
+    b.textContent = label;
+    b.disabled = disabled;
+    if (!disabled && !active) b.onclick = () => { state.page = page; renderLibrary(); };
+    return b;
+  };
+
+  el.pagination.appendChild(mkBtn("‹ Prev", state.page - 1, { disabled: state.page <= 1 }));
+  pageWindow(state.page, pages).forEach((p) => {
+    if (p === "…") {
+      const s = document.createElement("span");
+      s.className = "ellipsis";
+      s.textContent = "…";
+      el.pagination.appendChild(s);
+    } else {
+      el.pagination.appendChild(mkBtn(String(p), p, { active: p === state.page }));
+    }
+  });
+  el.pagination.appendChild(mkBtn("Next ›", state.page + 1, { disabled: state.page >= pages }));
+}
+function renderLibrary() {
+  const all = sortedLibrary();
+  const total = all.length;
+  const pages = Math.max(1, Math.ceil(total / state.perPage));
+  state.page = Math.min(Math.max(1, state.page), pages);
+  const start = (state.page - 1) * state.perPage;
+  const pageItems = all.slice(start, start + state.perPage);
+
+  el.grid.innerHTML = "";
+  el.libCount.textContent = total ? `${total} image${total === 1 ? "" : "s"}` : "";
+  el.libEmpty.hidden = total > 0;
+
+  pageItems.forEach((r) => {
     const card = document.createElement("div");
     card.className = "card";
     card.innerHTML = `
@@ -480,6 +535,8 @@ function renderLibrary() {
     card.querySelector('[data-act="delete"]').onclick = (e) => deleteImage(r, e.currentTarget);
     el.grid.appendChild(card);
   });
+
+  renderPagination(pages);
 }
 function startAdjust(record) {
   setMode("adjust", record);
@@ -557,6 +614,11 @@ function init() {
   el.clearBtn.onclick = () => setMode("generate");
   el.resetBtn.onclick = resetPills;
   el.refreshBtn.onclick = loadLibrary;
+
+  el.sortSel.value = state.sort;
+  el.perPageSel.value = String(state.perPage);
+  el.sortSel.onchange = () => { state.sort = el.sortSel.value; state.page = 1; renderLibrary(); };
+  el.perPageSel.onchange = () => { state.perPage = Number(el.perPageSel.value); state.page = 1; renderLibrary(); };
 
   // Uploads
   el.dropzone.onclick = () => el.fileInput.click();
