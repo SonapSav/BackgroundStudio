@@ -33,6 +33,7 @@ export async function generateImage({
   aspectRatio,
   resolution,
   keyingSafe = true,
+  seed,
 }) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
@@ -52,6 +53,7 @@ export async function generateImage({
   };
   if (aspectRatio) body.aspect_ratio = aspectRatio;
   if (resolution) body.resolution = resolution;
+  if (Number.isFinite(seed)) body.seed = seed;
   if (images.length) {
     body.input_references = images.map((url) => ({ type: "image_url", image_url: { url } }));
   }

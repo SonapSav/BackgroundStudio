@@ -17,6 +17,7 @@ const ICONS = {
   crop: `<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>`,
   replace: `<path d="m16 3 4 4-4 4"/><path d="M20 7H9a5 5 0 0 0-5 5"/><path d="m8 21-4-4 4-4"/><path d="M4 17h11a5 5 0 0 0 5-5"/>`,
   user: `<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>`,
+  dice: `<rect width="18" height="18" x="3" y="3" rx="3"/><circle cx="8" cy="8" r="1.2"/><circle cx="16" cy="16" r="1.2"/><circle cx="16" cy="8" r="1.2"/><circle cx="8" cy="16" r="1.2"/><circle cx="12" cy="12" r="1.2"/>`,
 };
 // Semi-transparent person silhouette for the subject placement guide.
 const SUBJECT_SVG = `<svg viewBox="0 0 100 150" width="100%" height="100%" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
@@ -171,6 +172,7 @@ const el = {
   fileInput: $("fileInput"), thumbs: $("thumbs"),
   sections: $("sections"),
   aspectChips: $("aspectChips"), resChips: $("resChips"), countChips: $("countChips"), keyingToggle: $("keyingToggle"),
+  seedInput: $("seedInput"), seedDice: $("seedDice"),
   clearBtn: $("clearBtn"), resetBtn: $("resetBtn"), previewBtn: $("previewBtn"),
   goBtn: $("goBtn"), goLabel: $("goLabel"), goIcon: $("goIcon"),
   promptOut: $("promptOut"), promptNote: $("promptNote"),
@@ -537,18 +539,22 @@ async function go() {
     url = "/api/generate";
     body.referenceImages = state.uploads.map((u) => u.dataUri);
   }
-  const payload = JSON.stringify(body);
+  // Seed: fixed value reproduces; blank = random. Batches use base+i (or random each) so images differ.
+  const seedRaw = el.seedInput.value.trim();
+  const parsedSeed = parseInt(seedRaw, 10);
+  const baseSeed = seedRaw !== "" && Number.isFinite(parsedSeed) ? parsedSeed : null;
+  const seedFor = (i) => (baseSeed != null ? baseSeed + i : Math.floor(Math.random() * 2147483647));
 
   setBusy(true, 0, count);
   let done = 0, ok = 0, spent = 0;
   const errors = [];
-  const one = () =>
-    fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: payload })
+  const one = (i) =>
+    fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, seed: seedFor(i) }) })
       .then(async (res) => { const data = await res.json(); if (!res.ok) throw new Error(data.error || "Generation failed."); return data; })
       .then((data) => { ok++; if (typeof data.cost === "number") spent += data.cost; })
       .catch((e) => { errors.push(e.message); })
       .finally(() => { done++; setBusy(true, done, count); });
-  await Promise.all(Array.from({ length: count }, one));
+  await Promise.all(Array.from({ length: count }, (_, i) => one(i)));
 
   state.uploads = [];
   renderThumbs();
@@ -660,7 +666,7 @@ function renderLibrary() {
       </div>
       <div class="body">
         <div class="metaline"><span>${dimLabel(r)}</span><span>${fmtCost(r.cost)}</span></div>
-        <div class="metaline"><span>${fmtTime(r.createdAt)}</span><span>${r.keyingSafe ? "keying-safe" : ""}</span></div>
+        <div class="metaline"><span>${fmtTime(r.createdAt)}</span>${r.seed != null ? `<span class="seed" data-seed="${r.seed}" title="Reuse this seed">seed ${r.seed}</span>` : `<span>${r.keyingSafe ? "keying-safe" : ""}</span>`}</div>
         <button class="prompt-toggle" type="button"><span class="tri">▸</span> Prompt used</button>
         <div class="prompt-full" hidden>
           <button class="prompt-copy" type="button" title="Copy prompt">${icon("copy", 12)}</button>
@@ -697,6 +703,8 @@ function renderLibrary() {
     });
     shot.addEventListener("dragend", hideDropBar);
     card.querySelector(".drag-handle").addEventListener("click", (e) => e.stopPropagation());
+    const seedEl = card.querySelector(".seed");
+    if (seedEl) seedEl.onclick = () => { el.seedInput.value = seedEl.dataset.seed; toast(`Seed ${seedEl.dataset.seed} set — reuse to reproduce.`); };
     card.querySelector('[data-act="adjust"]').onclick = () => startAdjust(r);
     card.querySelector('[data-act="download"]').onclick = () => downloadImage(r);
     card.querySelector('[data-act="delete"]').onclick = (e) => deleteImage(r, e.currentTarget);
@@ -950,6 +958,8 @@ function init() {
   setMode("generate");
 
   el.keyingToggle.onchange = () => { state.keyingSafe = el.keyingToggle.checked; updateNote(); };
+  $("diceIcon").innerHTML = icon("dice", 15);
+  el.seedDice.onclick = () => { el.seedInput.value = String(Math.floor(Math.random() * 2147483647)); };
   el.previewBtn.onclick = preview;
   el.goBtn.onclick = go;
   el.clearBtn.onclick = () => setMode("generate");

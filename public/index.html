@@ -69,6 +69,13 @@
         <div class="chips" id="countChips"></div>
       </div>
       <div class="control">
+        <p class="microlabel">Seed <span class="hint narrow-hide">blank = random</span></p>
+        <div class="seed-row">
+          <input type="text" id="seedInput" inputmode="numeric" placeholder="random" autocomplete="off" />
+          <button class="btn small" id="seedDice" type="button" title="Random seed"><span id="diceIcon"></span></button>
+        </div>
+      </div>
+      <div class="control">
         <p class="microlabel">Keying</p>
         <label class="switch">
           <input type="checkbox" id="keyingToggle" />

@@ -85,6 +85,7 @@ app.post("/api/generate", async (req, res, next) => {
       aspectRatio = DEFAULTS.aspectRatio,
       resolution = DEFAULTS.resolution,
       keyingSafe = DEFAULTS.keyingSafe,
+      seed,
     } = req.body || {};
 
     const result = await generateImage({
@@ -93,12 +94,14 @@ app.post("/api/generate", async (req, res, next) => {
       aspectRatio,
       resolution,
       keyingSafe,
+      seed,
     });
 
     const record = await library.add(
       {
         kind: "generate",
         prompt,
+        seed: Number.isFinite(seed) ? seed : null,
         parentId: null,
         aspectRatio,
         resolution,
@@ -129,6 +132,7 @@ app.post("/api/adjust", async (req, res, next) => {
       aspectRatio = DEFAULTS.aspectRatio,
       resolution = DEFAULTS.resolution,
       keyingSafe = DEFAULTS.keyingSafe,
+      seed,
     } = req.body || {};
 
     const source = await library.get(sourceId);
@@ -149,12 +153,14 @@ app.post("/api/adjust", async (req, res, next) => {
       aspectRatio,
       resolution,
       keyingSafe,
+      seed,
     });
 
     const record = await library.add(
       {
         kind: "adjust",
         prompt: instruction,
+        seed: Number.isFinite(seed) ? seed : null,
         parentId: sourceId,
         aspectRatio,
         resolution,
