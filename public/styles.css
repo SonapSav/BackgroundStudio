@@ -226,10 +226,18 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 .card .prompt-toggle .tri { display: inline-block; transition: transform .15s; font-size: 10px; }
 .card .prompt-toggle.open .tri { transform: rotate(90deg); }
 .card .prompt-full {
-  margin-top: 2px; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px;
+  position: relative; margin-top: 2px; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px;
   background: var(--bg); color: var(--muted); font-size: 12px; line-height: 1.5;
-  white-space: pre-wrap; word-break: break-word;
 }
+.card .prompt-text { display: block; white-space: pre-wrap; word-break: break-word; padding-right: 30px; }
+.card .prompt-copy {
+  position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); color: var(--muted);
+  cursor: pointer; transition: color .12s, border-color .12s;
+}
+.card .prompt-copy:hover { color: var(--text); border-color: var(--border-strong); }
+.card .prompt-copy.done { color: var(--success); border-color: rgba(99, 214, 143, .4); }
 .card .metaline { display: flex; justify-content: space-between; gap: 8px; font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--faint); font-size: 10.5px; }
 .card .actions { display: flex; gap: 6px; margin-top: 2px; }
 .card .actions .btn { flex: 1; padding: 6px 8px; font-size: 11.5px; }

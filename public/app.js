@@ -9,6 +9,7 @@ const ICONS = {
   eraser: `<path d="m7 21-4.3-4.3a1 1 0 0 1 0-1.4L14 4a2 2 0 0 1 2.8 0l4.2 4.2a2 2 0 0 1 0 2.8L11 21"/><path d="M22 21H7"/>`,
   wallet: `<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/>`,
   check: `<path d="M20 6 9 17l-5-5"/>`,
+  copy: `<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>`,
 };
 function icon(name, size = 16) {
   return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" ` +
@@ -167,6 +168,27 @@ function toast(msg, isErr = false) {
   t.textContent = msg;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), isErr ? 6000 : 3000);
+}
+// Copy text with a fallback for contexts where the async Clipboard API is unavailable.
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch { /* fall through to legacy path */ }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand("copy");
+    ta.remove();
+    return ok;
+  } catch {
+    return false;
+  }
 }
 function fileToDataUri(file) {
   return new Promise((resolve, reject) => {
@@ -553,7 +575,10 @@ function renderLibrary() {
         <div class="metaline"><span>${r.aspectRatio} · ${r.resolution}</span><span>${fmtCost(r.cost)}</span></div>
         <div class="metaline"><span>${fmtTime(r.createdAt)}</span><span>${r.keyingSafe ? "keying-safe" : ""}</span></div>
         <button class="prompt-toggle" type="button"><span class="tri">▸</span> Prompt used</button>
-        <div class="prompt-full" hidden>${escapeHtml(r.prompt || "")}</div>
+        <div class="prompt-full" hidden>
+          <button class="prompt-copy" type="button" title="Copy prompt">${icon("copy", 12)}</button>
+          <span class="prompt-text">${escapeHtml(r.prompt || "")}</span>
+        </div>
         <div class="actions">
           <button class="btn small" data-act="adjust" type="button">Adjust</button>
           <button class="btn small" data-act="download" type="button">Download</button>
@@ -563,6 +588,18 @@ function renderLibrary() {
     const ptoggle = card.querySelector(".prompt-toggle");
     const pfull = card.querySelector(".prompt-full");
     ptoggle.onclick = () => { const open = pfull.hidden; pfull.hidden = !open; ptoggle.classList.toggle("open", open); };
+    const pcopy = card.querySelector(".prompt-copy");
+    pcopy.onclick = async (e) => {
+      e.stopPropagation();
+      if (await copyText(r.prompt || "")) {
+        pcopy.classList.add("done");
+        pcopy.innerHTML = icon("check", 12);
+        setTimeout(() => { pcopy.classList.remove("done"); pcopy.innerHTML = icon("copy", 12); }, 1500);
+        toast("Prompt copied.");
+      } else {
+        toast("Copy failed.", true);
+      }
+    };
     card.querySelector(".shot").onclick = () => openLightbox(r);
     card.querySelector('[data-act="adjust"]').onclick = () => startAdjust(r);
     card.querySelector('[data-act="download"]').onclick = () => downloadImage(r);
