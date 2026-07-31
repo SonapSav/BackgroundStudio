@@ -222,7 +222,7 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
   color: var(--accent-2); font-size: 11.5px; font-weight: 600; font-family: var(--sans);
   display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;
 }
-.card .prompt-toggle:hover { text-decoration: underline; }
+.card .prompt-toggle:hover { color: var(--text); }
 .card .prompt-toggle .tri { display: inline-block; transition: transform .15s; font-size: 10px; }
 .card .prompt-toggle.open .tri { transform: rotate(90deg); }
 .card .prompt-full {
