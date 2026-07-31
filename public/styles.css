@@ -304,6 +304,26 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 }
 .drop-opt.over { border-style: solid; border-color: var(--accent); background: var(--accent-soft); color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
+/* --- Generating overlay (glassmorphic, full-screen) ----------------------- */
+.genoverlay {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(13, 14, 18, .5);
+  backdrop-filter: blur(16px) saturate(115%);
+  -webkit-backdrop-filter: blur(16px) saturate(115%);
+}
+.genbox { display: flex; flex-direction: column; align-items: center; gap: 24px; }
+.gentitle {
+  font-size: 24px; font-weight: 700; letter-spacing: .04em; color: var(--text);
+  font-variant-numeric: tabular-nums; animation: genpulse 1.6s ease-in-out infinite;
+}
+@keyframes genpulse { 0%, 100% { opacity: .6; } 50% { opacity: 1; } }
+.genspinner {
+  width: 46px; height: 46px; border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, .14); border-top-color: var(--accent);
+  animation: spin .8s linear infinite;
+}
+
 /* --- Lightbox ------------------------------------------------------------- */
 .lightbox {
   position: fixed; inset: 0; z-index: 50; background: rgba(6,7,10,.82); backdrop-filter: blur(6px);

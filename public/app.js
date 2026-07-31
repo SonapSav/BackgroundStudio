@@ -165,6 +165,7 @@ const el = {
   sortSel: $("sortSel"), perPageSel: $("perPageSel"), pagination: $("pagination"),
   lightbox: $("lightbox"), lightboxImg: $("lightboxImg"), lightboxClose: $("lightboxClose"),
   dropBar: $("dragDropBar"), dropOptAdjust: $("dropOptAdjust"), dropOptRef: $("dropOptRef"),
+  genOverlay: $("genOverlay"), genTitle: $("genTitle"),
 };
 
 /* ---- Helpers ---- */
@@ -524,11 +525,13 @@ function setBusy(b, done = 0, total = 0) {
   state.busy = b;
   el.goBtn.disabled = b;
   el.previewBtn.disabled = b;
+  el.goLabel.textContent = b ? "Working…" : (state.mode === "adjust" ? "Adjust" : "Generate");
   if (b) {
-    const prog = total > 1 ? ` ${done}/${total}` : "";
-    el.goLabel.innerHTML = `<span class="spinner"></span> Working…${prog}`;
+    const base = state.mode === "adjust" ? "Adjusting" : "Generating";
+    el.genTitle.textContent = total > 1 ? `${base} ${done} / ${total}` : base;
+    el.genOverlay.hidden = false;
   } else {
-    el.goLabel.textContent = state.mode === "adjust" ? "Adjust" : "Generate";
+    el.genOverlay.hidden = true;
   }
 }
 function resetPills() {
