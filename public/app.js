@@ -15,6 +15,7 @@ const ICONS = {
   download: `<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>`,
   trash: `<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>`,
   crop: `<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>`,
+  replace: `<path d="m16 3 4 4-4 4"/><path d="M20 7H9a5 5 0 0 0-5 5"/><path d="m8 21-4-4 4-4"/><path d="M4 17h11a5 5 0 0 0 5-5"/>`,
 };
 function icon(name, size = 16) {
   return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" ` +
@@ -490,11 +491,12 @@ async function go() {
   if (state.busy) return;
   const prompt = composeFinalPrompt();
   const region = state.mode === "adjust" ? state.region : null;
+  const needsWhat = region && (region.mode === "add" || region.mode === "replace");
   const canProceedWithoutPrompt =
-    region && (region.mode === "remove" || (region.mode === "add" && state.uploads.length > 0));
+    region && (region.mode === "remove" || (needsWhat && state.uploads.length > 0));
   if (!prompt && !canProceedWithoutPrompt) {
-    toast(region && region.mode === "add"
-      ? "For an Add region, type what to add or upload an object photo."
+    toast(needsWhat
+      ? `For ${region.mode === "replace" ? "Replace" : "Add"}, type what to use or upload a photo.`
       : "Add a prompt — pick pills or type one.", true);
     el.promptOut.focus();
     return;
@@ -733,7 +735,7 @@ function makeMaskDataUri(w, h, r) {
   g.fillStyle = "#fff"; g.fillRect(Math.round(r.x), Math.round(r.y), Math.round(r.w), Math.round(r.h));
   return c.toDataURL("image/png");
 }
-const regColor = () => (reg.mode === "add" ? "232,162,74" : "255,111,111");
+const regColor = () => (reg.mode === "add" ? "232,162,74" : reg.mode === "replace" ? "79,200,189" : "255,111,111");
 function regDraw() {
   const c = el.regCanvas, g = c.getContext("2d");
   g.clearRect(0, 0, c.width, c.height);
@@ -759,7 +761,9 @@ function setRegMode(mode) {
   el.regModeChips.querySelectorAll(".chip").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
   el.regHint.textContent = mode === "add"
     ? "Drag to mark WHERE to add — then describe what in the prompt."
-    : "Drag a box around the object to remove.";
+    : mode === "replace"
+      ? "Drag a box over the object to replace — then describe the replacement."
+      : "Drag a box around the object to remove.";
   regDraw();
 }
 function openRegionEditor() {
@@ -800,8 +804,10 @@ function renderRegionUI() {
   const r = state.region;
   el.markRegionBtn.innerHTML = `${icon("crop", 13)} ${r ? "Edit region" : "Mark region"}`;
   if (r) {
+    const modeIcon = { add: "sparkles", replace: "replace", remove: "trash" }[r.mode];
+    const modeLabel = { add: "Add", replace: "Replace", remove: "Remove" }[r.mode];
     el.regionChip.hidden = false;
-    el.regionChip.innerHTML = `${icon(r.mode === "add" ? "sparkles" : "trash", 12)} ${r.mode === "add" ? "Add" : "Remove"} · ${r.positionLabel} <span class="x" title="Clear region">✕</span>`;
+    el.regionChip.innerHTML = `${icon(modeIcon, 12)} ${modeLabel} · ${r.positionLabel} <span class="x" title="Clear region">✕</span>`;
     el.regionChip.querySelector(".x").onclick = clearRegion;
   } else {
     el.regionChip.hidden = true;
@@ -977,6 +983,7 @@ function init() {
   el.regionEditor.onclick = (e) => { if (e.target === el.regionEditor) closeRegionEditor(); };
   el.regModeChips.querySelectorAll(".chip").forEach((b) => (b.onclick = () => setRegMode(b.dataset.mode)));
   el.regModeChips.querySelector('[data-mode="add"]').innerHTML = `${icon("sparkles", 13)} Add`;
+  el.regModeChips.querySelector('[data-mode="replace"]').innerHTML = `${icon("replace", 13)} Replace`;
   el.regModeChips.querySelector('[data-mode="remove"]').innerHTML = `${icon("trash", 13)} Remove`;
   el.regCanvas.addEventListener("pointerdown", (e) => {
     reg.drawing = true; reg.start = regCanvasPos(e);

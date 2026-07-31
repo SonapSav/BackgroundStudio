@@ -15,13 +15,17 @@ const DEFAULTS = { aspectRatio: "16:9", resolution: "2K", keyingSafe: false };
 function buildEditInstruction({ userPrompt, region, hasMask, hasObjects }) {
   const where = region?.positionLabel ? ` in the ${region.positionLabel} area of the image` : "";
   const p = (userPrompt || "").trim();
+  const pInline = p.replace(/[.\s]+$/, ""); // no trailing period when embedded mid-sentence
   const parts = [];
   if (region?.mode === "remove") {
     parts.push(`Remove the main object located${where} and realistically fill that area with the surrounding background so the removal is seamless.`);
     if (p) parts.push(p);
   } else if (region?.mode === "add") {
-    parts.push(`Add ${p || "the provided element"}${where}.`);
+    parts.push(`Add ${pInline || "the provided element"}${where}.`);
     if (hasObjects) parts.push("Use the provided object photo(s) as the item to add, matching the scene's lighting, perspective, and shadows.");
+  } else if (region?.mode === "replace") {
+    parts.push(`Replace whatever is currently located${where} with ${pInline || "the provided element"}, matching the scene's perspective, lighting, and shadows.`);
+    if (hasObjects) parts.push("Use the provided object photo(s) as the replacement item.");
   } else if (p) {
     parts.push(p);
   }
