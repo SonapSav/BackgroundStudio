@@ -172,4 +172,8 @@ app.listen(PORT, () => {
       ? "OpenRouter key: detected"
       : "OpenRouter key: MISSING — add OPENROUTER_API_KEY to .env"
   );
+  library
+    .backfillDimensions()
+    .then((n) => { if (n) console.log(`Backfilled dimensions for ${n} existing image(s).`); })
+    .catch((err) => console.error("[backfill] failed:", err.message));
 });

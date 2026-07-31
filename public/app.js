@@ -385,7 +385,7 @@ function setMode(mode, base = null) {
     el.baseSlot.innerHTML =
       `<img src="/library/${base.file}" alt="" />` +
       `<div class="meta"><div class="p">${escapeHtml(base.prompt || "")}</div>` +
-      `<div class="hint">${base.aspectRatio} · ${base.resolution}</div></div>`;
+      `<div class="hint">${base.width && base.height ? `${base.width}×${base.height}` : `${base.aspectRatio} · ${base.resolution}`}</div></div>`;
   } else {
     el.modeBanner.hidden = true;
     el.baseSlot.className = "base-slot empty";
@@ -578,7 +578,7 @@ function renderLibrary() {
         <img src="/library/${r.file}" alt="" loading="lazy" draggable="false" />
       </div>
       <div class="body">
-        <div class="metaline"><span>${r.aspectRatio} · ${r.resolution}</span><span>${fmtCost(r.cost)}</span></div>
+        <div class="metaline"><span>${r.width && r.height ? `${r.width}×${r.height}` : `${r.aspectRatio} · ${r.resolution}`}</span><span>${fmtCost(r.cost)}</span></div>
         <div class="metaline"><span>${fmtTime(r.createdAt)}</span><span>${r.keyingSafe ? "keying-safe" : ""}</span></div>
         <button class="prompt-toggle" type="button"><span class="tri">▸</span> Prompt used</button>
         <div class="prompt-full" hidden>
