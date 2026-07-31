@@ -115,6 +115,13 @@ SECTIONS.forEach((s) => s.groups.forEach((g) => { PILLS[g.key] = g.pills; }));
 const ASPECTS = ["16:9", "9:16", "1:1"];
 const RESOLUTIONS = ["1K", "2K", "4K"];
 const COUNTS = ["1", "2", "3", "4"];
+// Measured 1K output per aspect ratio; 2K = ×2, 4K = ×4 on each side.
+const BASE_1K = { "16:9": [1376, 768], "9:16": [768, 1376], "1:1": [1024, 1024] };
+const RES_MULT = { "1K": 1, "2K": 2, "4K": 4 };
+function dimsFor(resolution, aspectRatio) {
+  const base = BASE_1K[aspectRatio], m = RES_MULT[resolution];
+  return base && m ? `${base[0] * m}×${base[1] * m}` : "";
+}
 // Rough per-image estimates (USD), from observed /images pricing. Actual cost is returned per image.
 const EST_COST = { "1K": 0.13, "2K": 0.14, "4K": 0.24 };
 
@@ -327,20 +334,24 @@ function updateSecCounts() {
 }
 
 /* ---- Output chips + estimate ---- */
-function buildChips(container, values, getActive, onPick) {
+function buildChips(container, values, getActive, onPick, tipFn) {
   container.innerHTML = "";
   values.forEach((v) => {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "chip" + (getActive() === v ? " active" : "");
     b.textContent = v;
+    if (tipFn) {
+      const t = tipFn(v);
+      if (t) { b.setAttribute("data-tip", t); b.setAttribute("aria-label", `${v} — ${t}`); }
+    }
     b.onclick = () => onPick(v);
     container.appendChild(b);
   });
 }
 function renderChips() {
   buildChips(el.aspectChips, ASPECTS, () => state.aspectRatio, (v) => { state.aspectRatio = v; renderChips(); });
-  buildChips(el.resChips, RESOLUTIONS, () => state.resolution, (v) => { state.resolution = v; renderChips(); updateEstimate(); });
+  buildChips(el.resChips, RESOLUTIONS, () => state.resolution, (v) => { state.resolution = v; renderChips(); updateEstimate(); }, (v) => dimsFor(v, state.aspectRatio));
   buildChips(el.countChips, COUNTS, () => String(state.count), (v) => { state.count = Number(v); renderChips(); updateEstimate(); });
   el.keyingToggle.checked = state.keyingSafe;
   updateNote();

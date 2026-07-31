@@ -153,6 +153,19 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
   background: var(--accent); border-color: var(--accent); color: var(--accent-ink);
   font-weight: 600; box-shadow: 0 0 0 3px var(--accent-soft);
 }
+.chip[data-tip] { position: relative; }
+.chip[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+  background: var(--surface-3); color: var(--text); border: 1px solid var(--border-strong);
+  border-radius: 7px; padding: 5px 9px; font-size: 11px; font-family: var(--mono);
+  font-variant-numeric: tabular-nums; white-space: nowrap; z-index: 30; pointer-events: none;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .45);
+}
+.chip[data-tip]:hover::before {
+  content: ""; position: absolute; bottom: calc(100% + 3px); left: 50%; transform: translateX(-50%);
+  border: 5px solid transparent; border-top-color: var(--border-strong); z-index: 30; pointer-events: none;
+}
 
 /* --- Compose layout ------------------------------------------------------- */
 .field { margin-bottom: 14px; }
