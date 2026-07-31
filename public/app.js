@@ -10,6 +10,7 @@ const ICONS = {
   wallet: `<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/>`,
   check: `<path d="M20 6 9 17l-5-5"/>`,
   copy: `<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>`,
+  grip: `<circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/>`,
 };
 function icon(name, size = 16) {
   return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" ` +
@@ -572,7 +573,8 @@ function renderLibrary() {
     card.innerHTML = `
       <div class="shot">
         ${r.kind === "adjust" ? `<span class="lineage">${icon("wand", 11)} adjusted</span>` : ""}
-        <img src="/library/${r.file}" alt="" loading="lazy" />
+        <span class="drag-handle" title="Drag onto the base slot to adjust">${icon("grip", 14)}</span>
+        <img src="/library/${r.file}" alt="" loading="lazy" draggable="false" />
       </div>
       <div class="body">
         <div class="metaline"><span>${r.aspectRatio} · ${r.resolution}</span><span>${fmtCost(r.cost)}</span></div>
@@ -610,6 +612,7 @@ function renderLibrary() {
       e.dataTransfer.setData("text/bgstudio-id", r.id);
       e.dataTransfer.effectAllowed = "copy";
     });
+    card.querySelector(".drag-handle").addEventListener("click", (e) => e.stopPropagation());
     card.querySelector('[data-act="adjust"]').onclick = () => startAdjust(r);
     card.querySelector('[data-act="download"]').onclick = () => downloadImage(r);
     card.querySelector('[data-act="delete"]').onclick = (e) => deleteImage(r, e.currentTarget);
