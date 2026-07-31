@@ -24,10 +24,10 @@
       <span class="metaitem">Est. cost <b id="estCost" class="mono">≈ $—</b> <span class="hint">approx · actual shown per image</span></span>
     </div>
 
-    <!-- Base image (adjust mode) -->
-    <div class="field" id="baseField" hidden>
-      <p class="microlabel active">Base image</p>
-      <div class="base-slot" id="baseSlot"></div>
+    <!-- Base image — persistent drop target; drag a library card here to adjust it -->
+    <div class="field" id="baseField">
+      <p class="microlabel" id="baseLabel">Base image <span class="hint narrow-hide">drag a library card here, or use a card's Adjust button</span></p>
+      <div class="base-slot empty" id="baseSlot"></div>
     </div>
 
     <!-- Reference / object uploads -->

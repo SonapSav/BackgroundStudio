@@ -141,7 +141,7 @@ Object.keys(PILLS).forEach((k) => { state.sel[k] = new Set(); });
 const $ = (id) => document.getElementById(id);
 const el = {
   keyPill: $("keyPill"), balancePill: $("balancePill"), estCost: $("estCost"),
-  baseField: $("baseField"), baseSlot: $("baseSlot"),
+  baseField: $("baseField"), baseSlot: $("baseSlot"), baseLabel: $("baseLabel"),
   uploadLabel: $("uploadLabel"), dropzone: $("dropzone"), dropText: $("dropText"),
   fileInput: $("fileInput"), thumbs: $("thumbs"),
   sections: $("sections"),
@@ -363,8 +363,8 @@ function setMode(mode, base = null) {
   state.base = base;
   const adjust = mode === "adjust";
 
-  el.baseField.hidden = !adjust;
   el.clearBtn.hidden = !adjust;
+  el.baseLabel.classList.toggle("active", adjust);
   el.goLabel.textContent = adjust ? "Adjust" : "Generate";
   el.uploadLabel.innerHTML = adjust
     ? `Objects to add <span class="hint narrow-hide">optional — composited into the adjustment</span>`
@@ -379,12 +379,15 @@ function setMode(mode, base = null) {
   if (adjust && base) {
     el.modeBanner.hidden = false;
     el.modeBanner.innerHTML = `${icon("wand", 14)} Adjusting an existing background`;
+    el.baseSlot.className = "base-slot filled";
     el.baseSlot.innerHTML =
       `<img src="/library/${base.file}" alt="" />` +
       `<div class="meta"><div class="p">${escapeHtml(base.prompt || "")}</div>` +
       `<div class="hint">${base.aspectRatio} · ${base.resolution}</div></div>`;
   } else {
     el.modeBanner.hidden = true;
+    el.baseSlot.className = "base-slot empty";
+    el.baseSlot.innerHTML = `<div class="base-empty">${icon("image", 15)} Drag a library image here to adjust it</div>`;
   }
 }
 
@@ -600,7 +603,13 @@ function renderLibrary() {
         toast("Copy failed.", true);
       }
     };
-    card.querySelector(".shot").onclick = () => openLightbox(r);
+    const shot = card.querySelector(".shot");
+    shot.onclick = () => openLightbox(r);
+    shot.setAttribute("draggable", "true");
+    shot.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/bgstudio-id", r.id);
+      e.dataTransfer.effectAllowed = "copy";
+    });
     card.querySelector('[data-act="adjust"]').onclick = () => startAdjust(r);
     card.querySelector('[data-act="download"]').onclick = () => downloadImage(r);
     card.querySelector('[data-act="delete"]').onclick = (e) => deleteImage(r, e.currentTarget);
@@ -726,6 +735,20 @@ function init() {
   ["dragover", "dragenter"].forEach((ev) => el.dropzone.addEventListener(ev, (e) => { e.preventDefault(); el.dropzone.classList.add("dragover"); }));
   ["dragleave", "drop"].forEach((ev) => el.dropzone.addEventListener(ev, (e) => { e.preventDefault(); el.dropzone.classList.remove("dragover"); }));
   el.dropzone.addEventListener("drop", (e) => { if (e.dataTransfer?.files?.length) addFiles(e.dataTransfer.files); });
+
+  // Drag a library card onto the base slot to start an adjustment
+  el.baseSlot.addEventListener("dragover", (e) => {
+    if (e.dataTransfer?.types?.includes("text/bgstudio-id")) { e.preventDefault(); el.baseSlot.classList.add("dragover"); }
+  });
+  el.baseSlot.addEventListener("dragleave", () => el.baseSlot.classList.remove("dragover"));
+  el.baseSlot.addEventListener("drop", (e) => {
+    const id = e.dataTransfer?.getData("text/bgstudio-id");
+    if (!id) return;
+    e.preventDefault();
+    el.baseSlot.classList.remove("dragover");
+    const rec = state.library.find((r) => r.id === id);
+    if (rec) startAdjust(rec);
+  });
 
   // Lightbox
   el.lightboxClose.onclick = closeLightbox;
