@@ -120,7 +120,10 @@ const BASE_1K = { "16:9": [1376, 768], "9:16": [768, 1376], "1:1": [1024, 1024] 
 const RES_MULT = { "1K": 1, "2K": 2, "4K": 4 };
 function dimsFor(resolution, aspectRatio) {
   const base = BASE_1K[aspectRatio], m = RES_MULT[resolution];
-  return base && m ? `${base[0] * m}×${base[1] * m}` : "";
+  if (!base || !m) return "";
+  const w = base[0] * m, h = base[1] * m;
+  const mp = (w * h) / 1e6;
+  return `${w}×${h} · ${mp.toFixed(1)} MP`;
 }
 // Rough per-image estimates (USD), from observed /images pricing. Actual cost is returned per image.
 const EST_COST = { "1K": 0.13, "2K": 0.14, "4K": 0.24 };
