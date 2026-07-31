@@ -550,15 +550,19 @@ function renderLibrary() {
         <img src="/library/${r.file}" alt="" loading="lazy" />
       </div>
       <div class="body">
-        <div class="prompt">${escapeHtml(r.prompt || "")}</div>
         <div class="metaline"><span>${r.aspectRatio} · ${r.resolution}</span><span>${fmtCost(r.cost)}</span></div>
         <div class="metaline"><span>${fmtTime(r.createdAt)}</span><span>${r.keyingSafe ? "keying-safe" : ""}</span></div>
+        <button class="prompt-toggle" type="button"><span class="tri">▸</span> Prompt used</button>
+        <div class="prompt-full" hidden>${escapeHtml(r.prompt || "")}</div>
         <div class="actions">
           <button class="btn small" data-act="adjust" type="button">Adjust</button>
           <button class="btn small" data-act="download" type="button">Download</button>
           <button class="btn small danger" data-act="delete" type="button">Delete</button>
         </div>
       </div>`;
+    const ptoggle = card.querySelector(".prompt-toggle");
+    const pfull = card.querySelector(".prompt-full");
+    ptoggle.onclick = () => { const open = pfull.hidden; pfull.hidden = !open; ptoggle.classList.toggle("open", open); };
     card.querySelector(".shot").onclick = () => openLightbox(r);
     card.querySelector('[data-act="adjust"]').onclick = () => startAdjust(r);
     card.querySelector('[data-act="download"]').onclick = () => downloadImage(r);
