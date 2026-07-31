@@ -239,8 +239,8 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
   overflow: hidden; display: flex; flex-direction: column; transition: border-color .12s;
 }
 .card:hover { border-color: var(--border-strong); }
-.card .shot { aspect-ratio: 16 / 9; background: var(--bg); cursor: pointer; position: relative; }
-.card .shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.card .shot { aspect-ratio: 16 / 9; background: var(--bg); cursor: pointer; position: relative; overflow: hidden; min-height: 0; }
+.card .shot img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
 .card .lineage {
   position: absolute; top: 6px; left: 6px; font-size: 10.5px; font-weight: 600; padding: 2px 7px;
   border-radius: 999px; color: var(--accent-2); background: rgba(79,200,189,.14); border: 1px solid rgba(79,200,189,.3);
