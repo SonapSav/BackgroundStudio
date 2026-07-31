@@ -22,9 +22,11 @@
 
 **Background Studio** is a small web app for creating **background images** to sit behind green‑screen
 (chroma‑key) footage — the kind of custom backdrops YouTubers and video creators composite themselves
-into. You describe the scene with a guided **pill‑based prompt builder** (or free text), generate at up
-to **4K**, then **adjust** any result with a follow‑up prompt or **drop in an object photo** to composite
-it into the scene. Everything you make lands in a local **library** you can sort, revisit, and reuse.
+into. Describe a scene with a guided **pill‑based prompt builder** (or free text) and generate at up to
+**4K**, then **edit** any result: adjust it with a prompt, draw a box to **add / replace / remove**
+objects, composite in an uploaded photo, or **reframe** it into a new aspect ratio (e.g. vertical for
+Shorts). Review edits with a **before/after slider** and a **subject‑placement guide**, and keep it all
+in a searchable, favouritable local **library**.
 
 It runs on your own machine and talks to **Google's Nano Banana Pro** (`google/gemini-3-pro-image-preview`)
 through **[OpenRouter](https://openrouter.ai)**, so all you need is an OpenRouter API key with some credit.
@@ -33,16 +35,33 @@ through **[OpenRouter](https://openrouter.ai)**, so all you need is an OpenRoute
 
 ## ✨ Features
 
+### Create
 - **Guided prompt builder** — pills for scene, objects/props, style, light & time, mood & colour,
-  camera & composition, and detail. Your pills and free text merge into one editable prompt.
+  camera & composition, keying, and detail. Your pills and typed text merge into one editable prompt.
 - **Text‑to‑image generation** with optional reference images to steer the look.
-- **Adjust** any library image with a new prompt — drag a card onto the base slot, or hit **Adjust**.
-- **Add objects** — upload a product/prop photo and composite it into an existing background.
-- **Real resolution & aspect control** — 1K / 2K / 4K at 16:9, 9:16, or 1:1 (true pixel sizes, not hints).
+- **Real resolution & aspect control** — 1K / 2K / 4K at 16:9, 9:16, or 1:1 (true pixel sizes, not hints;
+  hover a resolution to see exact dimensions + megapixels).
 - **Keying‑safe mode** — steers backgrounds away from chroma green/blue so they key cleanly.
 - **Batch** — generate 1–4 variations per run, in parallel.
-- **Library** — sort (newest / oldest / cost), pagination (persists across refreshes), per‑image metadata
-  (ratio · tier · dimensions · megapixels · cost), one‑click prompt copy, download, and delete.
+- **Seed control** — leave blank for random, or set/reuse a seed to reproduce a look; every card shows its
+  seed (click to reuse it).
+
+### Edit
+- **Adjust** any library image with a new prompt — click **Adjust**, or drag a card onto the base slot
+  (a floating drop bar makes it easy). Drop it in as a reference too.
+- **Region editor** — draw a box on the image and **Add**, **Replace**, or **Remove** whatever's there;
+  a generated mask + positional hint target the edit precisely.
+- **Add objects** — upload a product/prop photo and composite it into an existing background.
+- **Reframe / outpaint** — extend a background into a new aspect ratio (e.g. 16:9 → 9:16 for Shorts)
+  instead of regenerating.
+
+### Review & organise
+- **Before/after slider** — compare any edit against the version it came from with a draggable divider.
+- **Subject placement guide** — drop a draggable, resizable silhouette (with a rule‑of‑thirds grid) onto a
+  background to check the negative space fits your keyed subject.
+- **Library** — **search** by prompt, **favourite** ⭐, sort (newest / oldest / cost), pagination (persists
+  across refreshes), per‑image metadata (ratio · tier · dimensions · megapixels · cost · seed), one‑click
+  prompt copy, download, and delete.
 - **Live OpenRouter balance** in the header, updated after each run.
 - **Dark, glassmorphic UI** with a full‑screen "Generating" overlay.
 
@@ -157,12 +176,24 @@ Then open **http://localhost:3016** in your browser.
 
 ## 🎛️ Usage
 
-1. Pick pills (or type freely), then **Preview prompt** to see the merged prompt — edit it if you like.
-2. Choose **aspect ratio**, **resolution**, **image count**, and **keying‑safe** as needed.
-3. Hit **Generate**. Results appear in the library.
-4. To iterate, **Adjust** a library image with a new prompt, or drag it onto the base slot.
-5. To composite an object, enter Adjust, upload the object photo, and describe where it goes.
-6. **Download** finished backgrounds and drop them behind your keyed footage.
+**Generate**
+
+1. Pick pills (or type freely); optionally **Preview prompt** to see and edit the merged prompt.
+2. Set **aspect ratio**, **resolution**, **image count**, **seed**, and **keying‑safe**.
+3. Hit **Generate** — results land in the library.
+
+**Edit** (from any library card)
+
+- **Adjust** — describe a change, or drag the card onto the base slot. Upload an object photo to composite
+  something in.
+- **Region** — in Adjust, click **Mark region**, choose **Add / Replace / Remove**, draw a box, and Adjust.
+- **Reframe** — pick a new aspect ratio to outpaint the scene (great for 9:16 Shorts).
+
+**Review**
+
+- Click an image to open it; use **Compare** (on edited images) and the **Subject guide** to check placement.
+- **Search**, **favourite**, and **sort** in the library. **Download** finished backgrounds and drop them
+  behind your keyed footage.
 
 ---
 
