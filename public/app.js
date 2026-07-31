@@ -19,7 +19,9 @@ const ICONS = {
   user: `<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>`,
   dice: `<rect width="18" height="18" x="3" y="3" rx="3"/><circle cx="8" cy="8" r="1.2"/><circle cx="16" cy="16" r="1.2"/><circle cx="16" cy="8" r="1.2"/><circle cx="8" cy="16" r="1.2"/><circle cx="12" cy="12" r="1.2"/>`,
   star: `<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>`,
+  frame: `<line x1="22" x2="2" y1="6" y2="6"/><line x1="22" x2="2" y1="18" y2="18"/><line x1="6" x2="6" y1="2" y2="22"/><line x1="18" x2="18" y1="2" y2="22"/>`,
 };
+const REFRAME_ASPECTS = ["16:9", "9:16", "1:1", "4:5"];
 // Semi-transparent person silhouette for the subject placement guide.
 const SUBJECT_SVG = `<svg viewBox="0 0 100 150" width="100%" height="100%" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
   <g fill="rgba(15,17,24,0.5)" stroke="#ffffff" stroke-opacity="0.85" stroke-width="2.5" stroke-linejoin="round">
@@ -189,6 +191,9 @@ const el = {
   subjFlip: $("subjFlip"), gridToggle: $("gridToggle"),
   compareToggle: $("compareToggle"), lbBefore: $("lbBefore"), lbDivider: $("lbDivider"),
   lbTagBefore: $("lbTagBefore"), lbTagAfter: $("lbTagAfter"),
+  reframeModal: $("reframeModal"), reframeFrame: $("reframeFrame"), reframeImg: $("reframeImg"),
+  reframeAspects: $("reframeAspects"), reframeRes: $("reframeRes"),
+  reframeClose: $("reframeClose"), reframeCancel: $("reframeCancel"), reframeGo: $("reframeGo"),
   dropBar: $("dragDropBar"), dropOptAdjust: $("dropOptAdjust"), dropOptRef: $("dropOptRef"),
   genOverlay: $("genOverlay"), genTitle: $("genTitle"),
   regionRow: $("regionRow"), markRegionBtn: $("markRegionBtn"), regionChip: $("regionChip"),
@@ -676,7 +681,7 @@ function renderLibrary() {
     card.innerHTML = `
       <div class="shot">
         <button class="fav${r.favorite ? " on" : ""}" type="button" title="Favorite">${icon("star", 15)}</button>
-        ${r.kind === "adjust" ? `<span class="lineage">${icon("wand", 11)} adjusted</span>` : ""}
+        ${r.parentId ? `<span class="lineage">${icon(r.kind === "reframe" ? "frame" : "wand", 11)} ${r.kind === "reframe" ? "reframed" : "adjusted"}</span>` : ""}
         <span class="drag-handle" title="Drag onto the base slot to adjust">${icon("grip", 14)}</span>
         <img src="/library/${r.file}" alt="" loading="lazy" draggable="false" />
       </div>
@@ -690,6 +695,7 @@ function renderLibrary() {
         </div>
         <div class="actions">
           <button class="btn small" data-act="adjust" type="button">${icon("wand", 13)} Adjust</button>
+          <button class="btn small" data-act="reframe" type="button">${icon("frame", 13)} Reframe</button>
           <button class="btn small" data-act="download" type="button">${icon("download", 13)} Download</button>
           <button class="btn small danger" data-act="delete" type="button">${icon("trash", 13)} Delete</button>
         </div>
@@ -734,6 +740,7 @@ function renderLibrary() {
       } catch { r.favorite = !next; favBtn.classList.toggle("on", !next); toast("Couldn't update favorite.", true); }
     };
     card.querySelector('[data-act="adjust"]').onclick = () => startAdjust(r);
+    card.querySelector('[data-act="reframe"]').onclick = () => openReframe(r);
     card.querySelector('[data-act="download"]').onclick = () => downloadImage(r);
     card.querySelector('[data-act="delete"]').onclick = (e) => deleteImage(r, e.currentTarget);
     el.grid.appendChild(card);
@@ -741,6 +748,56 @@ function renderLibrary() {
 
   renderPagination(pages);
 }
+/* ---- Reframe / outpaint to a new aspect ratio ---- */
+const reframeState = { record: null, target: "9:16", resolution: "2K" };
+function renderReframe() {
+  el.reframeFrame.style.aspectRatio = reframeState.target.replace(":", " / ");
+  buildChips(el.reframeAspects, REFRAME_ASPECTS, () => reframeState.target, (v) => { reframeState.target = v; renderReframe(); });
+  buildChips(el.reframeRes, RESOLUTIONS, () => reframeState.resolution, (v) => { reframeState.resolution = v; renderReframe(); }, (v) => dimsFor(v, reframeState.target));
+}
+function openReframe(record) {
+  reframeState.record = record;
+  reframeState.resolution = record.resolution && RESOLUTIONS.includes(record.resolution) ? record.resolution : "2K";
+  const landscape = record.width >= record.height;
+  reframeState.target = landscape ? "9:16" : "16:9";
+  el.reframeImg.src = `/library/${record.file}`;
+  renderReframe();
+  el.reframeModal.hidden = false;
+}
+function closeReframe() { el.reframeModal.hidden = true; el.reframeImg.src = ""; }
+async function reframeGo() {
+  const rec = reframeState.record;
+  if (!rec) return;
+  el.reframeGo.disabled = true;
+  el.genTitle.textContent = "Reframing";
+  el.genOverlay.hidden = false;
+  try {
+    const res = await fetch("/api/reframe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sourceId: rec.id,
+        targetAspect: reframeState.target,
+        resolution: reframeState.resolution,
+        keyingSafe: !!rec.keyingSafe,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Reframe failed.");
+    applySpend(typeof data.cost === "number" ? data.cost : 0);
+    setTimeout(loadBalance, 6000);
+    closeReframe();
+    state.page = 1;
+    await loadLibrary();
+    toast(`Reframed to ${reframeState.target}.`);
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    el.reframeGo.disabled = false;
+    el.genOverlay.hidden = true;
+  }
+}
+
 function isCardDrag(e) {
   return !!e.dataTransfer && Array.from(e.dataTransfer.types).includes("text/bgstudio-id");
 }
@@ -1036,6 +1093,12 @@ function init() {
   el.sortSel.onchange = () => { state.sort = el.sortSel.value; prefSet("bgstudio.sort", state.sort); state.page = 1; renderLibrary(); };
   el.perPageSel.onchange = () => { state.perPage = Number(el.perPageSel.value); prefSet("bgstudio.perPage", String(state.perPage)); state.page = 1; renderLibrary(); };
 
+  $("reframeGoIcon").innerHTML = icon("frame", 15);
+  el.reframeClose.onclick = closeReframe;
+  el.reframeCancel.onclick = closeReframe;
+  el.reframeGo.onclick = reframeGo;
+  el.reframeModal.onclick = (e) => { if (e.target === el.reframeModal) closeReframe(); };
+
   $("favFilterIcon").innerHTML = icon("star", 13);
   el.librarySearch.oninput = () => { state.search = el.librarySearch.value; state.page = 1; renderLibrary(); };
   el.favFilter.onclick = () => { state.favOnly = !state.favOnly; el.favFilter.classList.toggle("active", state.favOnly); state.page = 1; renderLibrary(); };
@@ -1078,7 +1141,7 @@ function init() {
   // Lightbox
   el.lightboxClose.onclick = closeLightbox;
   el.lightbox.onclick = (e) => { if (e.target === el.lightbox) closeLightbox(); };
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeLightbox(); closeRegionEditor(); } });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeLightbox(); closeRegionEditor(); closeReframe(); } });
 
   // Before/after compare
   $("compareIcon").innerHTML = icon("replace", 14);

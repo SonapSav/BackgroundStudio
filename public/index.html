@@ -166,6 +166,29 @@
   </div>
 </div>
 
+<div class="reframe" id="reframeModal" hidden>
+  <div class="reframe-panel">
+    <div class="reframe-head">
+      <span class="reframe-title">Reframe</span>
+      <span class="hint">Extend the scene to fill a new aspect ratio — shaded areas are outpainted.</span>
+      <button class="btn small" id="reframeClose" type="button" style="margin-left:auto">Close</button>
+    </div>
+    <div class="reframe-body">
+      <div class="reframe-frame" id="reframeFrame"><img id="reframeImg" alt="" /></div>
+      <div class="reframe-controls">
+        <p class="microlabel">Target ratio</p>
+        <div class="chips" id="reframeAspects"></div>
+        <p class="microlabel" style="margin-top:12px">Resolution</p>
+        <div class="chips" id="reframeRes"></div>
+      </div>
+    </div>
+    <div class="reframe-foot">
+      <button class="btn" id="reframeCancel" type="button">Cancel</button>
+      <button class="btn primary" id="reframeGo" type="button"><span id="reframeGoIcon"></span> Reframe</button>
+    </div>
+  </div>
+</div>
+
 <div class="genoverlay" id="genOverlay" hidden>
   <div class="genbox">
     <div class="gentitle" id="genTitle">Generating</div>

@@ -11,6 +11,15 @@ const PORT = process.env.PORT || 3016;
 
 const DEFAULTS = { aspectRatio: "16:9", resolution: "2K", keyingSafe: false };
 
+// Instruction for reframing/outpainting a source image to a new aspect ratio.
+function buildReframeInstruction(target) {
+  const orient = target === "9:16" ? "tall vertical" : target === "1:1" ? "square" : target === "4:5" ? "portrait" : "wide horizontal";
+  return `Reframe this photograph into a ${target} ${orient} composition as one seamless, continuous single image. ` +
+    `Keep every existing element, subject, and detail exactly as they are — do not crop, stretch, distort, or move them. ` +
+    `Extend and continue the scene naturally to fill the new frame (adding more sky, ground, or sides as needed), matching the ` +
+    `lighting, colours, perspective, textures, and style perfectly, with no visible seams, bands, or borders.`;
+}
+
 // Compose an edit instruction when the user marked a region (add/remove).
 function buildEditInstruction({ userPrompt, region, hasMask, hasObjects }) {
   const where = region?.positionLabel ? ` in the ${region.positionLabel} area of the image` : "";
@@ -169,6 +178,58 @@ app.post("/api/adjust", async (req, res, next) => {
         model: MODEL,
         extraImageCount: extraImages.length,
         edit: region ? { mode: region.mode, position: region.positionLabel || null } : null,
+      },
+      result.bytes,
+      result.mediaType
+    );
+
+    res.json(record);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Reframe/outpaint an existing image to a new aspect ratio.
+app.post("/api/reframe", async (req, res, next) => {
+  try {
+    const {
+      sourceId,
+      targetAspect,
+      resolution = DEFAULTS.resolution,
+      keyingSafe = DEFAULTS.keyingSafe,
+      seed,
+    } = req.body || {};
+
+    const source = await library.get(sourceId);
+    if (!source) return res.status(404).json({ error: "Source image not found." });
+    if (!targetAspect) return res.status(400).json({ error: "A target aspect ratio is required." });
+
+    const bytes = await library.readImageBytes(source);
+    const uri = `data:image/${source.file.split(".").pop()};base64,${bytes.toString("base64")}`;
+    const instruction = buildReframeInstruction(targetAspect);
+
+    const result = await generateImage({
+      prompt: instruction,
+      images: [uri],
+      aspectRatio: targetAspect,
+      resolution,
+      keyingSafe,
+      seed,
+    });
+
+    const record = await library.add(
+      {
+        kind: "reframe",
+        prompt: instruction,
+        seed: Number.isFinite(seed) ? seed : null,
+        parentId: sourceId,
+        aspectRatio: targetAspect,
+        resolution,
+        keyingSafe: Boolean(keyingSafe),
+        cost: result.cost,
+        model: MODEL,
+        extraImageCount: 0,
+        edit: { mode: "reframe", to: targetAspect },
       },
       result.bytes,
       result.mediaType
