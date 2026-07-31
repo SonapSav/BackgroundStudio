@@ -12,6 +12,8 @@ const ICONS = {
   copy: `<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>`,
   grip: `<circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/>`,
   sparkles: `<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/>`,
+  download: `<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>`,
+  trash: `<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>`,
 };
 function icon(name, size = 16) {
   return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" ` +
@@ -625,9 +627,9 @@ function renderLibrary() {
           <span class="prompt-text">${escapeHtml(r.prompt || "")}</span>
         </div>
         <div class="actions">
-          <button class="btn small" data-act="adjust" type="button">Adjust</button>
-          <button class="btn small" data-act="download" type="button">Download</button>
-          <button class="btn small danger" data-act="delete" type="button">Delete</button>
+          <button class="btn small" data-act="adjust" type="button">${icon("wand", 13)} Adjust</button>
+          <button class="btn small" data-act="download" type="button">${icon("download", 13)} Download</button>
+          <button class="btn small danger" data-act="delete" type="button">${icon("trash", 13)} Delete</button>
         </div>
       </div>`;
     const ptoggle = card.querySelector(".prompt-toggle");
@@ -706,7 +708,7 @@ async function deleteImage(record, btn) {
   if (btn.dataset.confirm !== "1") {
     btn.dataset.confirm = "1";
     btn.textContent = "Sure?";
-    setTimeout(() => { if (btn.dataset.confirm === "1") { btn.dataset.confirm = ""; btn.textContent = "Delete"; } }, 3000);
+    setTimeout(() => { if (btn.dataset.confirm === "1") { btn.dataset.confirm = ""; btn.innerHTML = `${icon("trash", 13)} Delete`; } }, 3000);
     return;
   }
   try {
