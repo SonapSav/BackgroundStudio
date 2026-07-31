@@ -171,6 +171,16 @@ const el = {
 const fmtCost = (n) => (typeof n === "number" ? `$${n.toFixed(4)}` : "$—");
 const fmtTime = (iso) => new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+// Library metadata label derived from ACTUAL pixels: "2K (2752×1536 · 4.2 MP)".
+// Tier comes from the real megapixel bucket, so pre-fix mislabeled records read true.
+function dimLabel(r) {
+  if (r.width && r.height) {
+    const mp = (r.width * r.height) / 1e6;
+    const tier = mp < 2.5 ? "1K" : mp < 9 ? "2K" : "4K";
+    return `${tier} (${r.width}×${r.height} · ${mp.toFixed(1)} MP)`;
+  }
+  return `${r.aspectRatio} · ${r.resolution}`;
+}
 const splitCsv = (s) => (s || "").split(",").map((x) => x.trim()).filter(Boolean);
 const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -592,7 +602,7 @@ function renderLibrary() {
         <img src="/library/${r.file}" alt="" loading="lazy" draggable="false" />
       </div>
       <div class="body">
-        <div class="metaline"><span>${r.width && r.height ? `${r.width}×${r.height}` : `${r.aspectRatio} · ${r.resolution}`}</span><span>${fmtCost(r.cost)}</span></div>
+        <div class="metaline"><span>${dimLabel(r)}</span><span>${fmtCost(r.cost)}</span></div>
         <div class="metaline"><span>${fmtTime(r.createdAt)}</span><span>${r.keyingSafe ? "keying-safe" : ""}</span></div>
         <button class="prompt-toggle" type="button"><span class="tri">▸</span> Prompt used</button>
         <div class="prompt-full" hidden>
