@@ -9,7 +9,7 @@ import * as library from "./server/library.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3016;
 
-const DEFAULTS = { aspectRatio: "16:9", resolution: "2K", keyingSafe: true };
+const DEFAULTS = { aspectRatio: "16:9", resolution: "2K", keyingSafe: false };
 
 const app = express();
 app.use(express.json({ limit: "25mb" })); // base64 image uploads

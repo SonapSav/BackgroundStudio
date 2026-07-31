@@ -120,7 +120,7 @@ const state = {
   uploads: [],
   aspectRatio: "16:9",
   resolution: "2K",
-  keyingSafe: true,
+  keyingSafe: false,
   busy: false,
   sessionCost: 0,
   library: [],
@@ -137,7 +137,7 @@ const el = {
   uploadLabel: $("uploadLabel"), dropzone: $("dropzone"), dropText: $("dropText"),
   fileInput: $("fileInput"), thumbs: $("thumbs"),
   sections: $("sections"),
-  aspectChips: $("aspectChips"), resChips: $("resChips"), keyingChip: $("keyingChip"),
+  aspectChips: $("aspectChips"), resChips: $("resChips"), keyingToggle: $("keyingToggle"),
   clearBtn: $("clearBtn"), resetBtn: $("resetBtn"), previewBtn: $("previewBtn"),
   goBtn: $("goBtn"), goLabel: $("goLabel"),
   promptOut: $("promptOut"), promptNote: $("promptNote"),
@@ -309,8 +309,7 @@ function buildChips(container, values, getActive, onPick) {
 function renderChips() {
   buildChips(el.aspectChips, ASPECTS, () => state.aspectRatio, (v) => { state.aspectRatio = v; renderChips(); });
   buildChips(el.resChips, RESOLUTIONS, () => state.resolution, (v) => { state.resolution = v; renderChips(); updateEstimate(); });
-  el.keyingChip.className = "chip" + (state.keyingSafe ? " active" : "");
-  el.keyingChip.textContent = state.keyingSafe ? "Keying-safe: on" : "Keying-safe: off";
+  el.keyingToggle.checked = state.keyingSafe;
   updateNote();
 }
 function updateEstimate() {
@@ -552,7 +551,7 @@ function init() {
   updateEstimate();
   setMode("generate");
 
-  el.keyingChip.onclick = () => { state.keyingSafe = !state.keyingSafe; renderChips(); };
+  el.keyingToggle.onchange = () => { state.keyingSafe = el.keyingToggle.checked; updateNote(); };
   el.previewBtn.onclick = preview;
   el.goBtn.onclick = go;
   el.clearBtn.onclick = () => setMode("generate");
