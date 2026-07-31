@@ -16,7 +16,15 @@ const ICONS = {
   trash: `<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>`,
   crop: `<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>`,
   replace: `<path d="m16 3 4 4-4 4"/><path d="M20 7H9a5 5 0 0 0-5 5"/><path d="m8 21-4-4 4-4"/><path d="M4 17h11a5 5 0 0 0 5-5"/>`,
+  user: `<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>`,
 };
+// Semi-transparent person silhouette for the subject placement guide.
+const SUBJECT_SVG = `<svg viewBox="0 0 100 150" width="100%" height="100%" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+  <g fill="rgba(15,17,24,0.5)" stroke="#ffffff" stroke-opacity="0.85" stroke-width="2.5" stroke-linejoin="round">
+    <circle cx="50" cy="31" r="20"/>
+    <path d="M6 150 C6 102 26 60 50 60 C74 60 94 102 94 150 Z"/>
+  </g>
+</svg>`;
 function icon(name, size = 16) {
   return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" ` +
     `stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ` +
@@ -170,6 +178,9 @@ const el = {
   grid: $("grid"), libEmpty: $("libEmpty"), libCount: $("libCount"), refreshBtn: $("refreshBtn"),
   sortSel: $("sortSel"), perPageSel: $("perPageSel"), pagination: $("pagination"),
   lightbox: $("lightbox"), lightboxImg: $("lightboxImg"), lightboxClose: $("lightboxClose"),
+  lbStage: $("lbStage"), lbOverlay: $("lbOverlay"), lbGrid: $("lbGrid"), lbSubject: $("lbSubject"),
+  guideToggle: $("guideToggle"), lbGuideCtrls: $("lbGuideCtrls"), subjSize: $("subjSize"),
+  subjFlip: $("subjFlip"), gridToggle: $("gridToggle"),
   dropBar: $("dragDropBar"), dropOptAdjust: $("dropOptAdjust"), dropOptRef: $("dropOptRef"),
   genOverlay: $("genOverlay"), genTitle: $("genTitle"),
   regionRow: $("regionRow"), markRegionBtn: $("markRegionBtn"), regionChip: $("regionChip"),
@@ -182,6 +193,7 @@ const el = {
 const fmtCost = (n) => (typeof n === "number" ? `$${n.toFixed(4)}` : "$—");
 const fmtTime = (iso) => new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 // Snap actual pixels to the nearest ratio we offer, so it's accurate regardless
 // of the stored (requested) value.
 const RATIOS = [["16:9", 16 / 9], ["9:16", 9 / 16], ["1:1", 1]];
@@ -847,8 +859,29 @@ async function deleteImage(record, btn) {
   } catch (err) { toast(err.message, true); }
 }
 
-/* ---- Lightbox ---- */
-function openLightbox(record) { el.lightboxImg.src = `/library/${record.file}`; el.lightbox.hidden = false; }
+/* ---- Lightbox + subject placement guide ---- */
+const guide = { on: false, grid: true, x: 50, y: 26, h: 72, flip: false, dragging: false };
+function renderGuide() {
+  el.lbOverlay.hidden = !guide.on;
+  el.lbGuideCtrls.hidden = !guide.on;
+  el.guideToggle.classList.toggle("active", guide.on);
+  el.lbGrid.style.display = guide.grid ? "block" : "none";
+  el.gridToggle.classList.toggle("active", guide.grid);
+  el.subjFlip.classList.toggle("active", guide.flip);
+  const s = el.lbSubject;
+  s.style.left = guide.x + "%";
+  s.style.top = guide.y + "%";
+  s.style.height = guide.h + "%";
+  s.style.transform = `translateX(-50%)${guide.flip ? " scaleX(-1)" : ""}`;
+}
+function toggleGuide() { guide.on = !guide.on; renderGuide(); }
+function setSubjectPos(pos) { guide.x = pos === "left" ? 28 : pos === "right" ? 72 : 50; renderGuide(); }
+function openLightbox(record) {
+  el.lightboxImg.src = `/library/${record.file}`;
+  el.subjSize.value = String(guide.h);
+  renderGuide();
+  el.lightbox.hidden = false;
+}
 function closeLightbox() { el.lightbox.hidden = true; el.lightboxImg.src = ""; }
 
 /* ---- Config ---- */
@@ -973,6 +1006,31 @@ function init() {
   el.lightboxClose.onclick = closeLightbox;
   el.lightbox.onclick = (e) => { if (e.target === el.lightbox) closeLightbox(); };
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeLightbox(); closeRegionEditor(); } });
+
+  // Subject placement guide
+  el.lbSubject.innerHTML = SUBJECT_SVG;
+  $("guideIcon").innerHTML = icon("user", 14);
+  el.guideToggle.onclick = toggleGuide;
+  el.gridToggle.onclick = () => { guide.grid = !guide.grid; renderGuide(); };
+  el.subjFlip.onclick = () => { guide.flip = !guide.flip; renderGuide(); };
+  el.subjSize.oninput = () => { guide.h = Number(el.subjSize.value); renderGuide(); };
+  el.lbGuideCtrls.querySelectorAll("[data-pos]").forEach((b) => (b.onclick = () => setSubjectPos(b.dataset.pos)));
+  let drag = null;
+  el.lbSubject.addEventListener("pointerdown", (e) => {
+    if (!guide.on) return;
+    e.preventDefault();
+    const r = el.lbStage.getBoundingClientRect();
+    drag = { sx: e.clientX, sy: e.clientY, x0: guide.x, y0: guide.y, w: r.width, h: r.height };
+    guide.dragging = true;
+    try { el.lbSubject.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+  });
+  el.lbSubject.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    guide.x = clamp(drag.x0 + ((e.clientX - drag.sx) / drag.w) * 100, 4, 96);
+    guide.y = clamp(drag.y0 + ((e.clientY - drag.sy) / drag.h) * 100, -6, 94);
+    renderGuide();
+  });
+  el.lbSubject.addEventListener("pointerup", () => { drag = null; guide.dragging = false; });
 
   // Region editor (button icon is set by renderRegionUI)
   el.markRegionBtn.onclick = openRegionEditor;

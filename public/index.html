@@ -171,7 +171,26 @@
 
 <div class="lightbox" id="lightbox" hidden>
   <button class="close" id="lightboxClose" type="button">✕</button>
-  <img id="lightboxImg" alt="" />
+  <div class="lb-stage" id="lbStage">
+    <img id="lightboxImg" alt="" />
+    <div class="lb-overlay" id="lbOverlay" hidden>
+      <div class="lb-grid" id="lbGrid"></div>
+      <div class="subject" id="lbSubject"></div>
+    </div>
+  </div>
+  <div class="lb-tools">
+    <button class="btn small" id="guideToggle" type="button"><span id="guideIcon"></span> Subject guide</button>
+    <div class="lb-guide-ctrls" id="lbGuideCtrls" hidden>
+      <div class="chips">
+        <button class="chip" data-pos="left" type="button">Left</button>
+        <button class="chip" data-pos="center" type="button">Center</button>
+        <button class="chip" data-pos="right" type="button">Right</button>
+      </div>
+      <label class="lb-range">Size <input type="range" id="subjSize" min="30" max="100" step="1" /></label>
+      <button class="chip" id="subjFlip" type="button">Flip</button>
+      <button class="chip" id="gridToggle" type="button">Grid</button>
+    </div>
+  </div>
 </div>
 
 <script src="app.js"></script>
