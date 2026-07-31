@@ -976,6 +976,8 @@ function init() {
   el.regApplyBtn.onclick = applyRegion;
   el.regionEditor.onclick = (e) => { if (e.target === el.regionEditor) closeRegionEditor(); };
   el.regModeChips.querySelectorAll(".chip").forEach((b) => (b.onclick = () => setRegMode(b.dataset.mode)));
+  el.regModeChips.querySelector('[data-mode="add"]').innerHTML = `${icon("sparkles", 13)} Add`;
+  el.regModeChips.querySelector('[data-mode="remove"]').innerHTML = `${icon("trash", 13)} Remove`;
   el.regCanvas.addEventListener("pointerdown", (e) => {
     reg.drawing = true; reg.start = regCanvasPos(e);
     reg.rect = { x: reg.start.x, y: reg.start.y, w: 0, h: 0 };
