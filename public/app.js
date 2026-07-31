@@ -198,6 +198,10 @@ function dimLabel(r) {
 const splitCsv = (s) => (s || "").split(",").map((x) => x.trim()).filter(Boolean);
 const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+// localStorage with a safe fallback (some privacy modes throw).
+function prefGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
+function prefSet(k, v) { try { localStorage.setItem(k, v); } catch { /* ignore */ } }
+
 function toast(msg, isErr = false) {
   const t = document.createElement("div");
   t.className = "toast" + (isErr ? " err" : "");
@@ -795,10 +799,16 @@ function init() {
   el.resetBtn.onclick = resetPills;
   el.refreshBtn.onclick = loadLibrary;
 
+  // Restore saved library view preferences (persist across refreshes).
+  const savedSort = prefGet("bgstudio.sort");
+  if (["newest", "oldest", "costhigh"].includes(savedSort)) state.sort = savedSort;
+  const savedPerPage = Number(prefGet("bgstudio.perPage"));
+  if ([6, 9, 12, 24].includes(savedPerPage)) state.perPage = savedPerPage;
+
   el.sortSel.value = state.sort;
   el.perPageSel.value = String(state.perPage);
-  el.sortSel.onchange = () => { state.sort = el.sortSel.value; state.page = 1; renderLibrary(); };
-  el.perPageSel.onchange = () => { state.perPage = Number(el.perPageSel.value); state.page = 1; renderLibrary(); };
+  el.sortSel.onchange = () => { state.sort = el.sortSel.value; prefSet("bgstudio.sort", state.sort); state.page = 1; renderLibrary(); };
+  el.perPageSel.onchange = () => { state.perPage = Number(el.perPageSel.value); prefSet("bgstudio.perPage", String(state.perPage)); state.page = 1; renderLibrary(); };
 
   // Uploads
   el.dropzone.onclick = () => el.fileInput.click();
