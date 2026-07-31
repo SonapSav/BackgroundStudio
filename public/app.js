@@ -20,7 +20,8 @@ const SECTIONS = [
     title: "Scene & Subject", hint: "setting · environment", open: true,
     groups: [{ key: "scene", label: "Setting", pills: [
       "Cityscape", "City street", "Alley", "Rooftop", "Skyline", "Neon city", "Cyberpunk city",
-      "Interior room", "Living room", "Home office", "Studio backdrop", "Kitchen", "Cafe", "Bar",
+      "Interior room", "Living room", "Home office", "Corporate office", "Open-plan office",
+      "Conference room", "Office cubicle", "Office lobby", "Studio backdrop", "Kitchen", "Cafe", "Bar",
       "Library", "Warehouse", "Stage", "Forest", "Jungle", "Mountains", "Beach", "Coastline",
       "Desert", "Countryside", "Open field", "Garden", "Park", "Waterfall", "Cave", "Underwater",
       "Sky & clouds", "Outer space", "Nebula", "Abstract", "Gradient wash", "Bokeh lights",
