@@ -37,6 +37,15 @@ async function writeIndex(records) {
 }
 
 // Newest first.
+// Serialize index read-modify-write so concurrent adds/removes (e.g. a batch of
+// N images generated in parallel) can't clobber each other's library.json write.
+let indexQueue = Promise.resolve();
+function withIndexLock(fn) {
+  const result = indexQueue.then(() => fn());
+  indexQueue = result.then(() => {}, () => {}); // keep the chain alive on error
+  return result;
+}
+
 export async function list() {
   const records = await readIndex();
   return [...records].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
@@ -72,19 +81,25 @@ export async function add(meta, bytes, mediaType = "image/png") {
     ...meta,
   };
 
-  const records = await readIndex();
-  records.push(record);
-  await writeIndex(records);
+  await withIndexLock(async () => {
+    const records = await readIndex();
+    records.push(record);
+    await writeIndex(records);
+  });
   return record;
 }
 
 // Removes the metadata record and its image file. Returns true if something was removed.
 export async function remove(id) {
-  const records = await readIndex();
-  const record = records.find((r) => r.id === id);
+  const record = await withIndexLock(async () => {
+    const records = await readIndex();
+    const found = records.find((r) => r.id === id);
+    if (!found) return null;
+    await writeIndex(records.filter((r) => r.id !== id));
+    return found;
+  });
   if (!record) return false;
 
-  await writeIndex(records.filter((r) => r.id !== id));
   try {
     await fs.unlink(path.join(IMAGES_DIR, record.file));
   } catch (err) {

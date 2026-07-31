@@ -112,6 +112,7 @@ SECTIONS.forEach((s) => s.groups.forEach((g) => { PILLS[g.key] = g.pills; }));
 
 const ASPECTS = ["16:9", "9:16", "1:1"];
 const RESOLUTIONS = ["1K", "2K", "4K"];
+const COUNTS = ["1", "2", "3", "4"];
 // Rough per-image estimates (USD). Actual cost is returned by the API and shown per image.
 const EST_COST = { "1K": 0.10, "2K": 0.13, "4K": 0.24 };
 
@@ -122,6 +123,7 @@ const state = {
   uploads: [],
   aspectRatio: "16:9",
   resolution: "2K",
+  count: 1,
   keyingSafe: false,
   busy: false,
   library: [],
@@ -141,7 +143,7 @@ const el = {
   uploadLabel: $("uploadLabel"), dropzone: $("dropzone"), dropText: $("dropText"),
   fileInput: $("fileInput"), thumbs: $("thumbs"),
   sections: $("sections"),
-  aspectChips: $("aspectChips"), resChips: $("resChips"), keyingToggle: $("keyingToggle"),
+  aspectChips: $("aspectChips"), resChips: $("resChips"), countChips: $("countChips"), keyingToggle: $("keyingToggle"),
   clearBtn: $("clearBtn"), resetBtn: $("resetBtn"), previewBtn: $("previewBtn"),
   goBtn: $("goBtn"), goLabel: $("goLabel"),
   promptOut: $("promptOut"), promptNote: $("promptNote"),
@@ -314,12 +316,17 @@ function buildChips(container, values, getActive, onPick) {
 function renderChips() {
   buildChips(el.aspectChips, ASPECTS, () => state.aspectRatio, (v) => { state.aspectRatio = v; renderChips(); });
   buildChips(el.resChips, RESOLUTIONS, () => state.resolution, (v) => { state.resolution = v; renderChips(); updateEstimate(); });
+  buildChips(el.countChips, COUNTS, () => String(state.count), (v) => { state.count = Number(v); renderChips(); updateEstimate(); });
   el.keyingToggle.checked = state.keyingSafe;
   updateNote();
 }
 function updateEstimate() {
-  const c = EST_COST[state.resolution];
-  el.estCost.textContent = c ? `≈ $${c.toFixed(2)}` : "≈ $—";
+  const per = EST_COST[state.resolution];
+  if (!per) { el.estCost.textContent = "≈ $—"; return; }
+  const n = state.count;
+  el.estCost.textContent = n > 1
+    ? `≈ $${(per * n).toFixed(2)} (${n} × $${per.toFixed(2)})`
+    : `≈ $${per.toFixed(2)}`;
 }
 function updateNote() {
   el.promptNote.textContent =
@@ -405,52 +412,61 @@ async function go() {
   if (!prompt) { toast("Add a prompt — pick pills or type one.", true); el.promptOut.focus(); return; }
   el.promptOut.value = prompt; // reflect exactly what will be sent
 
-  setBusy(true);
-  try {
-    const body = {
-      prompt,
-      aspectRatio: state.aspectRatio,
-      resolution: state.resolution,
-      keyingSafe: state.keyingSafe,
-    };
-    let url;
-    if (state.mode === "adjust" && state.base) {
-      url = "/api/adjust";
-      body.sourceId = state.base.id;
-      body.extraImages = state.uploads.map((u) => u.dataUri);
-    } else {
-      url = "/api/generate";
-      body.referenceImages = state.uploads.map((u) => u.dataUri);
-    }
-    const wasAdjust = state.mode === "adjust";
+  const count = state.count;
+  const wasAdjust = state.mode === "adjust" && !!state.base;
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Generation failed.");
-
-    state.uploads = [];
-    renderThumbs();
-    el.promptOut.value = ""; // clear so pills+text don't accumulate on the next run
-    setMode("generate");
-    state.page = 1; // jump to the page showing the newest result
-    await loadLibrary();
-    loadBalance(); // credit was just spent — refresh remaining
-    toast(wasAdjust ? "Adjustment saved." : "Background generated.");
-  } catch (err) {
-    toast(err.message, true);
-  } finally {
-    setBusy(false);
+  const body = {
+    prompt,
+    aspectRatio: state.aspectRatio,
+    resolution: state.resolution,
+    keyingSafe: state.keyingSafe,
+  };
+  let url;
+  if (wasAdjust) {
+    url = "/api/adjust";
+    body.sourceId = state.base.id;
+    body.extraImages = state.uploads.map((u) => u.dataUri);
+  } else {
+    url = "/api/generate";
+    body.referenceImages = state.uploads.map((u) => u.dataUri);
   }
+  const payload = JSON.stringify(body);
+
+  setBusy(true, 0, count);
+  let done = 0, ok = 0;
+  const errors = [];
+  const one = () =>
+    fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: payload })
+      .then(async (res) => { const data = await res.json(); if (!res.ok) throw new Error(data.error || "Generation failed."); })
+      .then(() => { ok++; })
+      .catch((e) => { errors.push(e.message); })
+      .finally(() => { done++; setBusy(true, done, count); });
+  await Promise.all(Array.from({ length: count }, one));
+
+  state.uploads = [];
+  renderThumbs();
+  el.promptOut.value = ""; // clear so pills+text don't accumulate on the next run
+  setMode("generate");
+  state.page = 1; // jump to the page showing the newest results
+  await loadLibrary();
+  loadBalance(); // credit was just spent — refresh remaining
+  setBusy(false);
+
+  const noun = wasAdjust ? "Adjustment" : "Background";
+  if (ok > 0 && errors.length === 0) toast(`${ok} ${noun.toLowerCase()}${ok === 1 ? "" : "s"} saved.`);
+  else if (ok > 0) toast(`${ok} of ${count} succeeded — ${errors.length} failed: ${errors[0]}`, true);
+  else toast(errors[0] || "Generation failed.", true);
 }
-function setBusy(b) {
+function setBusy(b, done = 0, total = 0) {
   state.busy = b;
   el.goBtn.disabled = b;
   el.previewBtn.disabled = b;
-  el.goLabel.innerHTML = b ? `<span class="spinner"></span> Working…` : (state.mode === "adjust" ? "Adjust" : "Generate");
+  if (b) {
+    const prog = total > 1 ? ` ${done}/${total}` : "";
+    el.goLabel.innerHTML = `<span class="spinner"></span> Working…${prog}`;
+  } else {
+    el.goLabel.textContent = state.mode === "adjust" ? "Adjust" : "Generate";
+  }
 }
 function resetPills() {
   Object.values(state.sel).forEach((set) => set.clear());
