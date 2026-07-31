@@ -154,6 +154,7 @@ const el = {
   grid: $("grid"), libEmpty: $("libEmpty"), libCount: $("libCount"), refreshBtn: $("refreshBtn"),
   sortSel: $("sortSel"), perPageSel: $("perPageSel"), pagination: $("pagination"),
   lightbox: $("lightbox"), lightboxImg: $("lightboxImg"), lightboxClose: $("lightboxClose"),
+  dropBar: $("dragDropBar"),
 };
 
 /* ---- Helpers ---- */
@@ -611,7 +612,9 @@ function renderLibrary() {
     shot.addEventListener("dragstart", (e) => {
       e.dataTransfer.setData("text/bgstudio-id", r.id);
       e.dataTransfer.effectAllowed = "copy";
+      showDropBar();
     });
+    shot.addEventListener("dragend", hideDropBar);
     card.querySelector(".drag-handle").addEventListener("click", (e) => e.stopPropagation());
     card.querySelector('[data-act="adjust"]').onclick = () => startAdjust(r);
     card.querySelector('[data-act="download"]').onclick = () => downloadImage(r);
@@ -621,6 +624,19 @@ function renderLibrary() {
 
   renderPagination(pages);
 }
+function isCardDrag(e) {
+  return !!e.dataTransfer && Array.from(e.dataTransfer.types).includes("text/bgstudio-id");
+}
+function acceptCardDrop(e) {
+  const id = e.dataTransfer?.getData("text/bgstudio-id");
+  if (!id) return;
+  e.preventDefault();
+  const rec = state.library.find((r) => r.id === id);
+  if (rec) startAdjust(rec);
+}
+function showDropBar() { el.dropBar.hidden = false; }
+function hideDropBar() { el.dropBar.hidden = true; el.dropBar.classList.remove("over"); }
+
 function startAdjust(record) {
   setMode("adjust", record);
   state.uploads = [];
@@ -713,6 +729,7 @@ function init() {
   $("libIcon").innerHTML = icon("library", 16);
   $("eyeIcon").innerHTML = icon("eye", 15);
   $("resetIcon").innerHTML = icon("eraser", 15);
+  $("dropBarIcon").innerHTML = icon("wand", 15);
 
   renderSections();
   renderChips();
@@ -739,18 +756,23 @@ function init() {
   ["dragleave", "drop"].forEach((ev) => el.dropzone.addEventListener(ev, (e) => { e.preventDefault(); el.dropzone.classList.remove("dragover"); }));
   el.dropzone.addEventListener("drop", (e) => { if (e.dataTransfer?.files?.length) addFiles(e.dataTransfer.files); });
 
-  // Drag a library card onto the base slot to start an adjustment
+  // Drag a library card onto the base slot (or the floating bar) to start an adjustment
   el.baseSlot.addEventListener("dragover", (e) => {
-    if (e.dataTransfer?.types?.includes("text/bgstudio-id")) { e.preventDefault(); el.baseSlot.classList.add("dragover"); }
+    if (isCardDrag(e)) { e.preventDefault(); el.baseSlot.classList.add("dragover"); }
   });
   el.baseSlot.addEventListener("dragleave", () => el.baseSlot.classList.remove("dragover"));
-  el.baseSlot.addEventListener("drop", (e) => {
-    const id = e.dataTransfer?.getData("text/bgstudio-id");
-    if (!id) return;
-    e.preventDefault();
-    el.baseSlot.classList.remove("dragover");
-    const rec = state.library.find((r) => r.id === id);
-    if (rec) startAdjust(rec);
+  el.baseSlot.addEventListener("drop", (e) => { el.baseSlot.classList.remove("dragover"); acceptCardDrop(e); });
+
+  el.dropBar.addEventListener("dragover", (e) => { if (isCardDrag(e)) { e.preventDefault(); el.dropBar.classList.add("over"); } });
+  el.dropBar.addEventListener("dragleave", () => el.dropBar.classList.remove("over"));
+  el.dropBar.addEventListener("drop", (e) => { hideDropBar(); acceptCardDrop(e); });
+
+  // While dragging a card, auto-scroll when the cursor nears the top/bottom edge
+  document.addEventListener("dragover", (e) => {
+    if (!isCardDrag(e)) return;
+    const margin = 70, step = 16;
+    if (e.clientY < margin) window.scrollBy(0, -step);
+    else if (e.clientY > window.innerHeight - margin) window.scrollBy(0, step);
   });
 
   // Lightbox
