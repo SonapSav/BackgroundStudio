@@ -124,7 +124,6 @@ const state = {
   resolution: "2K",
   keyingSafe: false,
   busy: false,
-  sessionCost: 0,
   library: [],
   sort: "newest",
   perPage: 12,
@@ -137,7 +136,7 @@ Object.keys(PILLS).forEach((k) => { state.sel[k] = new Set(); });
 /* ---- DOM ---- */
 const $ = (id) => document.getElementById(id);
 const el = {
-  keyPill: $("keyPill"), balancePill: $("balancePill"), sessionCost: $("sessionCost"), estCost: $("estCost"),
+  keyPill: $("keyPill"), balancePill: $("balancePill"), estCost: $("estCost"),
   baseField: $("baseField"), baseSlot: $("baseSlot"),
   uploadLabel: $("uploadLabel"), dropzone: $("dropzone"), dropText: $("dropText"),
   fileInput: $("fileInput"), thumbs: $("thumbs"),
@@ -420,10 +419,6 @@ async function go() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Generation failed.");
 
-    if (typeof data.cost === "number") {
-      state.sessionCost += data.cost;
-      el.sessionCost.textContent = fmtCost(state.sessionCost);
-    }
     state.uploads = [];
     renderThumbs();
     setMode("generate");
