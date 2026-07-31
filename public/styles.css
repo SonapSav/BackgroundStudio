@@ -252,6 +252,48 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 }
 .toast.err { color: var(--danger); border-color: rgba(255,111,111,.4); background: rgba(255,111,111,.1); }
 
+/* --- Meta row (model / estimate) ------------------------------------------ */
+.metarow {
+  display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center;
+  padding: 10px 12px; margin-bottom: 14px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2);
+  font-size: 12px; color: var(--muted);
+}
+.metaitem b { color: var(--text); font-weight: 600; }
+.metaitem .mono { color: var(--accent); }
+
+/* --- Collapsible pill section (BRANDING.md §6) ---------------------------- */
+.sec {
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2);
+  margin-bottom: 10px; overflow: hidden;
+}
+.sec[open] { border-color: var(--border-strong); }
+.sec > summary {
+  list-style: none; cursor: pointer; user-select: none;
+  display: flex; align-items: center; gap: 10px; padding: 11px 13px;
+}
+.sec > summary::-webkit-details-marker { display: none; }
+.sec-title {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted);
+  transition: color .12s;
+}
+.sec[open] .sec-title { color: var(--accent); }
+.sec-hint { font-size: 11.5px; color: var(--faint); }
+.sec .chev {
+  margin-left: auto; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
+  transform: rotate(-45deg); transition: transform .18s, border-color .12s;
+}
+.sec[open] .chev { transform: rotate(45deg); border-color: var(--accent); }
+.sec-body { padding: 4px 13px 14px; }
+.subgroup { margin-top: 12px; }
+.subgroup:first-child { margin-top: 4px; }
+.subgroup .microlabel { margin-bottom: 8px; }
+.selcount { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--accent); font-size: 11px; }
+
+/* --- Assembled prompt box ------------------------------------------------- */
+#promptOut { min-height: 96px; font-size: 12.5px; color: var(--accent-2); }
+.prompt-note { margin-top: 8px; }
+
 /* --- Responsive ----------------------------------------------------------- */
 @media (max-width: 700px) { .grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 560px) {

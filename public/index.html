@@ -19,9 +19,9 @@
   <section class="panel" id="composePanel">
     <div id="modeBanner" class="mode-banner" hidden></div>
 
-    <div class="field">
-      <p class="microlabel" id="promptLabel">Prompt</p>
-      <textarea id="prompt" placeholder="Describe the background… e.g. moody neon-lit rain-soaked city street at night, cinematic, wide"></textarea>
+    <div class="metarow">
+      <span class="metaitem">Model <b id="modelName">Nano Banana Pro</b></span>
+      <span class="metaitem">Est. cost <b id="estCost" class="mono">≈ $—</b> <span class="hint">approx · actual shown per image</span></span>
     </div>
 
     <!-- Base image (adjust mode) -->
@@ -32,7 +32,7 @@
 
     <!-- Reference / object uploads -->
     <div class="field">
-      <p class="microlabel" id="uploadLabel">Reference images</p>
+      <p class="microlabel" id="uploadLabel">Reference images <span class="hint narrow-hide">optional — steers the look</span></p>
       <div class="dropzone" id="dropzone" tabindex="0">
         <span id="dropText">Drop images here, or click to choose — used as visual references</span>
         <input type="file" id="fileInput" accept="image/*" multiple hidden />
@@ -40,7 +40,11 @@
       <div class="thumbs" id="thumbs"></div>
     </div>
 
-    <div class="controls-row">
+    <!-- Pill sections (built by app.js) -->
+    <div id="sections"></div>
+
+    <!-- Output controls -->
+    <div class="controls-row" style="margin-top:4px">
       <div class="control">
         <p class="microlabel">Aspect ratio</p>
         <div class="chips" id="aspectChips"></div>
@@ -57,8 +61,17 @@
 
     <div class="actionbar">
       <button class="btn" id="clearBtn" type="button" hidden>Cancel adjust</button>
+      <button class="btn" id="resetBtn" type="button"><span id="resetIcon"></span> Reset pills</button>
+      <button class="btn" id="previewBtn" type="button"><span id="eyeIcon"></span> Preview prompt</button>
       <button class="btn primary" id="goBtn" type="button"><span id="goLabel">Generate</span></button>
     </div>
+  </section>
+
+  <!-- Editable assembled prompt -->
+  <section class="panel">
+    <p class="microlabel">Prompt sent to Gemini <span class="hint">editable · what you Generate</span></p>
+    <textarea id="promptOut" class="mono" placeholder="Pick some pills above and click “Preview prompt”, or just type your prompt directly here."></textarea>
+    <div class="prompt-note hint" id="promptNote"></div>
   </section>
 
   <!-- Library -->
@@ -67,6 +80,7 @@
       <span id="libIcon"></span>
       <h2 class="section-title" style="margin:0">Library</h2>
       <span class="lib-count" id="libCount"></span>
+      <button class="btn small" id="refreshBtn" type="button" style="margin-left:auto">Refresh</button>
     </div>
     <div class="grid" id="grid"></div>
     <div class="empty" id="libEmpty" hidden>No backgrounds yet. Generate your first one above.</div>

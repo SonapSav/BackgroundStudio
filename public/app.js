@@ -5,6 +5,8 @@ const ICONS = {
   image: `<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>`,
   library: `<path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/>`,
   wand: `<path d="m15 4 1 1"/><path d="m8.5 8.5 11-11"/><path d="M14 7 3 18l3 3L17 10"/><path d="m18 13 1 1"/>`,
+  eye: `<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>`,
+  eraser: `<path d="m7 21-4.3-4.3a1 1 0 0 1 0-1.4L14 4a2 2 0 0 1 2.8 0l4.2 4.2a2 2 0 0 1 0 2.8L11 21"/><path d="M22 21H7"/>`,
 };
 function icon(name, size = 16) {
   return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" ` +
@@ -12,45 +14,132 @@ function icon(name, size = 16) {
     `aria-hidden="true">${ICONS[name] || ""}</svg>`;
 }
 
+/* ---- Prompt-builder taxonomy (pills). Easy to tweak — just data. ---- */
+const SECTIONS = [
+  {
+    title: "Scene & Subject", hint: "setting · environment", open: true,
+    groups: [{ key: "scene", label: "Setting", pills: [
+      "Cityscape", "City street", "Alley", "Rooftop", "Skyline", "Neon city", "Cyberpunk city",
+      "Interior room", "Living room", "Home office", "Studio backdrop", "Kitchen", "Cafe", "Bar",
+      "Library", "Warehouse", "Stage", "Forest", "Jungle", "Mountains", "Beach", "Coastline",
+      "Desert", "Countryside", "Open field", "Garden", "Park", "Waterfall", "Cave", "Underwater",
+      "Sky & clouds", "Outer space", "Nebula", "Abstract", "Gradient wash", "Bokeh lights",
+      "Sci-fi interior", "Fantasy landscape", "Ancient ruins", "Snowy landscape",
+    ] }],
+    custom: { key: "sceneText", ph: "Describe the scene — e.g. rain-soaked rooftop overlooking a neon skyline" },
+  },
+  {
+    title: "Style & Medium", hint: "look · rendering", open: true,
+    groups: [{ key: "style", label: "Medium / style", pills: [
+      "Photorealistic", "Cinematic film still", "Studio photography", "3D render", "Octane render",
+      "Digital painting", "Concept art", "Illustration", "Anime", "Watercolor", "Oil painting",
+      "Matte painting", "Minimalist", "Flat vector", "Isometric", "Low-poly", "Pixel art",
+      "Vintage film", "Analog photo", "Product shot",
+    ] }],
+    custom: { key: "styleText", ph: "Or type a style — e.g. 90s VHS look, Studio Ghibli" },
+  },
+  {
+    title: "Light & Time", hint: "lighting · time · weather", open: false,
+    groups: [
+      { key: "lighting", label: "Lighting", pills: [
+        "Golden hour", "Blue hour", "Soft studio light", "Softbox", "Hard light", "Dramatic shadows",
+        "Backlit", "Rim light", "Volumetric light", "God rays", "Neon glow", "Moonlight", "Candlelight",
+        "Firelight", "Overcast", "High-key", "Low-key", "Spotlight", "Bioluminescent", "Ambient",
+      ] },
+      { key: "timeweather", label: "Time & weather", pills: [
+        "Day", "Night", "Sunrise", "Sunset", "Dusk", "Dawn", "Foggy", "Misty", "Rainy", "Wet",
+        "Snowy", "Stormy", "Clear sky", "Cloudy", "Hazy",
+      ] },
+    ],
+  },
+  {
+    title: "Mood & Color", hint: "atmosphere · palette", open: false,
+    groups: [
+      { key: "mood", label: "Mood / atmosphere", pills: [
+        "Moody", "Bright & airy", "Cozy", "Epic", "Serene", "Calm", "Mysterious", "Dreamy", "Ethereal",
+        "Energetic", "Melancholic", "Whimsical", "Dark", "Nostalgic", "Futuristic", "Luxurious",
+        "Gritty", "Minimal", "Romantic", "Ominous", "Uplifting",
+      ] },
+      { key: "color", label: "Color palette", pills: [
+        "Warm tones", "Cool tones", "Monochrome", "Black & white", "Pastel", "Vibrant", "Muted",
+        "Earth tones", "Neon", "Sepia", "Teal & orange", "Jewel tones", "High contrast", "Duotone",
+        "Desaturated", "Golden",
+      ] },
+    ],
+  },
+  {
+    title: "Camera & Composition", hint: "angle · framing · keying", open: false,
+    groups: [
+      { key: "composition", label: "Camera / composition", pills: [
+        "Wide angle", "Ultra-wide", "Panoramic", "Telephoto", "Aerial view", "Drone shot", "Eye-level",
+        "Low angle", "High angle", "Top-down", "Shallow depth of field", "Deep focus", "Bokeh",
+        "Symmetrical", "Rule of thirds", "Leading lines", "Centered composition",
+      ] },
+      { key: "keying", label: "Framing for keying (green-screen)", pills: [
+        "Empty center for subject", "Negative space left", "Negative space right",
+        "Clear foreground", "Depth for parallax", "Unobtrusive focal point",
+      ] },
+    ],
+  },
+  {
+    title: "Detail & Extras", hint: "quality · keywords", open: false,
+    groups: [{ key: "detail", label: "Quality", pills: [
+      "Highly detailed", "Ultra-detailed", "Sharp focus", "8K", "Photoreal textures", "Intricate",
+      "Clean", "Ray-traced", "Realistic materials", "Subtle film grain",
+    ] }],
+    custom: { key: "extraText", ph: "Additional details / keywords, comma-separated" },
+  },
+];
+
+// Flatten pills per group key so prompt assembly preserves pill order.
+const PILLS = {};
+SECTIONS.forEach((s) => s.groups.forEach((g) => { PILLS[g.key] = g.pills; }));
+
+const ASPECTS = ["16:9", "9:16", "1:1"];
+const RESOLUTIONS = ["1K", "2K", "4K"];
+// Rough per-image estimates (USD). Actual cost is returned by the API and shown per image.
+const EST_COST = { "1K": 0.10, "2K": 0.13, "4K": 0.24 };
+
 /* ---- State ---- */
 const state = {
-  mode: "generate",           // "generate" | "adjust"
-  base: null,                 // library record being adjusted
-  uploads: [],                // [{ name, dataUri }]
+  mode: "generate",
+  base: null,
+  uploads: [],
   aspectRatio: "16:9",
   resolution: "2K",
   keyingSafe: true,
   busy: false,
   sessionCost: 0,
   library: [],
+  sel: {},            // { groupKey: Set(labels) }
+  text: {},           // { sceneText, styleText, extraText }
 };
-
-const ASPECTS = ["16:9", "9:16", "1:1"];
-const RESOLUTIONS = ["1K", "2K", "4K"];
+Object.keys(PILLS).forEach((k) => { state.sel[k] = new Set(); });
 
 /* ---- DOM ---- */
 const $ = (id) => document.getElementById(id);
 const el = {
-  keyPill: $("keyPill"), sessionCost: $("sessionCost"),
-  prompt: $("prompt"), promptLabel: $("promptLabel"),
+  keyPill: $("keyPill"), sessionCost: $("sessionCost"), estCost: $("estCost"),
   baseField: $("baseField"), baseSlot: $("baseSlot"),
   uploadLabel: $("uploadLabel"), dropzone: $("dropzone"), dropText: $("dropText"),
   fileInput: $("fileInput"), thumbs: $("thumbs"),
+  sections: $("sections"),
   aspectChips: $("aspectChips"), resChips: $("resChips"), keyingChip: $("keyingChip"),
-  clearBtn: $("clearBtn"), goBtn: $("goBtn"), goLabel: $("goLabel"),
+  clearBtn: $("clearBtn"), resetBtn: $("resetBtn"), previewBtn: $("previewBtn"),
+  goBtn: $("goBtn"), goLabel: $("goLabel"),
+  promptOut: $("promptOut"), promptNote: $("promptNote"),
   modeBanner: $("modeBanner"),
-  grid: $("grid"), libEmpty: $("libEmpty"), libCount: $("libCount"),
+  grid: $("grid"), libEmpty: $("libEmpty"), libCount: $("libCount"), refreshBtn: $("refreshBtn"),
   lightbox: $("lightbox"), lightboxImg: $("lightboxImg"), lightboxClose: $("lightboxClose"),
 };
 
 /* ---- Helpers ---- */
-function fmtCost(n) {
-  return typeof n === "number" ? `$${n.toFixed(4)}` : "$—";
-}
-function fmtTime(iso) {
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-}
+const fmtCost = (n) => (typeof n === "number" ? `$${n.toFixed(4)}` : "$—");
+const fmtTime = (iso) => new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+const splitCsv = (s) => (s || "").split(",").map((x) => x.trim()).filter(Boolean);
+const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
 function toast(msg, isErr = false) {
   const t = document.createElement("div");
   t.className = "toast" + (isErr ? " err" : "");
@@ -66,8 +155,130 @@ function fileToDataUri(file) {
     r.readAsDataURL(file);
   });
 }
+function selected(key) {
+  const set = state.sel[key];
+  return (PILLS[key] || []).filter((p) => set.has(p));
+}
 
-/* ---- Chips ---- */
+/* ---- Prompt assembly (tuned for Gemini 3 Pro Image) ---- */
+function buildPrompt() {
+  const parts = [];
+
+  const styleAll = [...selected("style"), ...splitCsv(state.text.styleText)];
+  const sceneDesc = [selected("scene").map((s) => s.toLowerCase()).join(", "), (state.text.sceneText || "").trim()]
+    .filter(Boolean).join(", ");
+
+  // Lead: "<medium> of <scene>"
+  if (styleAll.length === 1 && sceneDesc) {
+    const m = styleAll[0];
+    const art = /^[aeiou]/i.test(m) ? "An" : "A";
+    parts.push(`${art} ${m.toLowerCase()} of ${sceneDesc}`);
+  } else if (styleAll.length > 1 && sceneDesc) {
+    parts.push(`${cap(sceneDesc)}, in the style of ${styleAll.join(", ").toLowerCase()}`);
+  } else if (sceneDesc) {
+    parts.push(cap(sceneDesc));
+  } else if (styleAll.length) {
+    parts.push(cap(styleAll.join(", ")));
+  }
+
+  const lighting = selected("lighting");
+  if (lighting.length) parts.push(`${lighting.join(", ").toLowerCase()} lighting`);
+
+  const tw = selected("timeweather");
+  if (tw.length) parts.push(tw.join(", ").toLowerCase());
+
+  const mood = selected("mood");
+  if (mood.length) parts.push(`${mood.join(", ").toLowerCase()} atmosphere`);
+
+  const color = selected("color");
+  if (color.length) parts.push(`${color.join(", ").toLowerCase()} color palette`);
+
+  const comp = selected("composition");
+  if (comp.length) parts.push(comp.join(", ").toLowerCase());
+
+  const keying = selected("keying");
+  if (keying.length) parts.push(keying.join(", ").toLowerCase());
+
+  const detail = selected("detail");
+  if (detail.length) parts.push(detail.join(", ").toLowerCase());
+
+  const extra = (state.text.extraText || "").trim();
+  if (extra) parts.push(extra);
+
+  let prompt = parts.map((s) => s.trim()).filter(Boolean).join(". ");
+  if (prompt && !/[.!?]$/.test(prompt)) prompt += ".";
+  return prompt;
+}
+function selectionCount() {
+  return Object.values(state.sel).reduce((n, set) => n + set.size, 0);
+}
+
+/* ---- Sections render ---- */
+function renderSections() {
+  el.sections.innerHTML = "";
+  SECTIONS.forEach((sec) => {
+    const d = document.createElement("details");
+    d.className = "sec";
+    d.open = !!sec.open;
+
+    const sum = document.createElement("summary");
+    sum.innerHTML = `<span class="sec-title">${sec.title}</span><span class="sec-hint">${sec.hint}</span>` +
+      `<span class="selcount" data-sec></span><span class="chev"></span>`;
+    d.appendChild(sum);
+
+    const body = document.createElement("div");
+    body.className = "sec-body";
+
+    sec.groups.forEach((g) => {
+      const grp = document.createElement("div");
+      grp.className = "subgroup";
+      grp.innerHTML = `<p class="microlabel">${g.label}</p>`;
+      const chips = document.createElement("div");
+      chips.className = "chips";
+      g.pills.forEach((p) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "chip" + (state.sel[g.key].has(p) ? " active" : "");
+        b.textContent = p;
+        b.onclick = () => {
+          const set = state.sel[g.key];
+          set.has(p) ? set.delete(p) : set.add(p);
+          b.classList.toggle("active");
+          updateSecCounts();
+        };
+        chips.appendChild(b);
+      });
+      grp.appendChild(chips);
+      body.appendChild(grp);
+    });
+
+    if (sec.custom) {
+      const wrap = document.createElement("div");
+      wrap.className = "subgroup";
+      const inp = document.createElement("input");
+      inp.type = "text";
+      inp.placeholder = sec.custom.ph;
+      inp.value = state.text[sec.custom.key] || "";
+      inp.oninput = () => { state.text[sec.custom.key] = inp.value; };
+      wrap.appendChild(inp);
+      body.appendChild(wrap);
+    }
+
+    d.appendChild(body);
+    d._sec = sec;
+    el.sections.appendChild(d);
+  });
+  updateSecCounts();
+}
+function updateSecCounts() {
+  el.sections.querySelectorAll("details.sec").forEach((d) => {
+    const n = d._sec.groups.reduce((acc, g) => acc + state.sel[g.key].size, 0);
+    const badge = d.querySelector("[data-sec]");
+    if (badge) badge.textContent = n ? `${n}` : "";
+  });
+}
+
+/* ---- Output chips + estimate ---- */
 function buildChips(container, values, getActive, onPick) {
   container.innerHTML = "";
   values.forEach((v) => {
@@ -75,15 +286,25 @@ function buildChips(container, values, getActive, onPick) {
     b.type = "button";
     b.className = "chip" + (getActive() === v ? " active" : "");
     b.textContent = v;
-    b.onclick = () => { onPick(v); };
+    b.onclick = () => onPick(v);
     container.appendChild(b);
   });
 }
 function renderChips() {
   buildChips(el.aspectChips, ASPECTS, () => state.aspectRatio, (v) => { state.aspectRatio = v; renderChips(); });
-  buildChips(el.resChips, RESOLUTIONS, () => state.resolution, (v) => { state.resolution = v; renderChips(); });
+  buildChips(el.resChips, RESOLUTIONS, () => state.resolution, (v) => { state.resolution = v; renderChips(); updateEstimate(); });
   el.keyingChip.className = "chip" + (state.keyingSafe ? " active" : "");
   el.keyingChip.textContent = state.keyingSafe ? "Keying-safe: on" : "Keying-safe: off";
+  updateNote();
+}
+function updateEstimate() {
+  const c = EST_COST[state.resolution];
+  el.estCost.textContent = c ? `≈ $${c.toFixed(2)}` : "≈ $—";
+}
+function updateNote() {
+  el.promptNote.textContent =
+    `Applied at generation: ${state.aspectRatio} · ${state.resolution}` +
+    (state.keyingSafe ? " · keying-safe (avoids chroma green/blue)" : "");
 }
 
 /* ---- Mode (generate vs adjust) ---- */
@@ -95,14 +316,15 @@ function setMode(mode, base = null) {
   el.baseField.hidden = !adjust;
   el.clearBtn.hidden = !adjust;
   el.goLabel.textContent = adjust ? "Adjust" : "Generate";
-  el.promptLabel.textContent = adjust ? "Adjustment prompt" : "Prompt";
-  el.uploadLabel.textContent = adjust ? "Objects to add (optional)" : "Reference images";
+  el.uploadLabel.innerHTML = adjust
+    ? `Objects to add <span class="hint narrow-hide">optional — composited into the adjustment</span>`
+    : `Reference images <span class="hint narrow-hide">optional — steers the look</span>`;
   el.dropText.textContent = adjust
     ? "Drop object photos here, or click — these get composited into the adjustment"
     : "Drop images here, or click to choose — used as visual references";
-  el.prompt.placeholder = adjust
-    ? "Describe the change… e.g. make it rain, add neon reflections on the pavement"
-    : "Describe the background… e.g. moody neon-lit rain-soaked city street at night, cinematic, wide";
+  el.promptOut.placeholder = adjust
+    ? "Describe the change — e.g. make it rain, add neon reflections. Pills above still apply."
+    : "Pick some pills above and click “Preview prompt”, or just type your prompt directly here.";
 
   if (adjust && base) {
     el.modeBanner.hidden = false;
@@ -115,20 +337,14 @@ function setMode(mode, base = null) {
     el.modeBanner.hidden = true;
   }
 }
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-}
 
 /* ---- Uploads ---- */
 async function addFiles(fileList) {
   const files = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
   for (const f of files) {
     try {
-      const dataUri = await fileToDataUri(f);
-      state.uploads.push({ name: f.name, dataUri });
-    } catch {
-      toast(`Couldn't read ${f.name}`, true);
-    }
+      state.uploads.push({ name: f.name, dataUri: await fileToDataUri(f) });
+    } catch { toast(`Couldn't read ${f.name}`, true); }
   }
   renderThumbs();
 }
@@ -143,11 +359,18 @@ function renderThumbs() {
   });
 }
 
-/* ---- Generate / Adjust ---- */
+/* ---- Preview / Generate / Adjust ---- */
+function preview() {
+  const p = buildPrompt();
+  if (!p) { toast("Pick some pills or type a scene first.", true); return; }
+  el.promptOut.value = p;
+  toast("Prompt assembled — edit freely before generating.");
+}
 async function go() {
   if (state.busy) return;
-  const prompt = el.prompt.value.trim();
-  if (!prompt) { toast("Enter a prompt first.", true); el.prompt.focus(); return; }
+  let prompt = el.promptOut.value.trim();
+  if (!prompt) { prompt = buildPrompt(); el.promptOut.value = prompt; }
+  if (!prompt) { toast("Add a prompt — pick pills or type one.", true); el.promptOut.focus(); return; }
 
   setBusy(true);
   try {
@@ -166,6 +389,7 @@ async function go() {
       url = "/api/generate";
       body.referenceImages = state.uploads.map((u) => u.dataUri);
     }
+    const wasAdjust = state.mode === "adjust";
 
     const res = await fetch(url, {
       method: "POST",
@@ -179,13 +403,11 @@ async function go() {
       state.sessionCost += data.cost;
       el.sessionCost.textContent = fmtCost(state.sessionCost);
     }
-    // Reset compose for the next round.
-    el.prompt.value = "";
     state.uploads = [];
     renderThumbs();
     setMode("generate");
     await loadLibrary();
-    toast(state.mode === "adjust" ? "Adjustment saved." : "Background generated.");
+    toast(wasAdjust ? "Adjustment saved." : "Background generated.");
   } catch (err) {
     toast(err.message, true);
   } finally {
@@ -195,9 +417,15 @@ async function go() {
 function setBusy(b) {
   state.busy = b;
   el.goBtn.disabled = b;
-  el.goLabel.innerHTML = b
-    ? `<span class="spinner"></span> Working…`
-    : (state.mode === "adjust" ? "Adjust" : "Generate");
+  el.previewBtn.disabled = b;
+  el.goLabel.innerHTML = b ? `<span class="spinner"></span> Working…` : (state.mode === "adjust" ? "Adjust" : "Generate");
+}
+function resetPills() {
+  Object.values(state.sel).forEach((set) => set.clear());
+  state.text = {};
+  renderSections();
+  el.sections.querySelectorAll("input").forEach((i) => (i.value = ""));
+  toast("Pills cleared.");
 }
 
 /* ---- Library ---- */
@@ -205,9 +433,7 @@ async function loadLibrary() {
   try {
     const res = await fetch("/api/library");
     state.library = await res.json();
-  } catch {
-    state.library = [];
-  }
+  } catch { state.library = []; }
   renderLibrary();
 }
 function renderLibrary() {
@@ -233,7 +459,6 @@ function renderLibrary() {
           <button class="btn small danger" data-act="delete" type="button">Delete</button>
         </div>
       </div>`;
-
     card.querySelector(".shot").onclick = () => openLightbox(r);
     card.querySelector('[data-act="adjust"]').onclick = () => startAdjust(r);
     card.querySelector('[data-act="download"]').onclick = () => downloadImage(r);
@@ -245,8 +470,9 @@ function startAdjust(record) {
   setMode("adjust", record);
   state.uploads = [];
   renderThumbs();
+  el.promptOut.value = "";
   window.scrollTo({ top: 0, behavior: "smooth" });
-  el.prompt.focus();
+  el.promptOut.focus();
 }
 function downloadImage(record) {
   const a = document.createElement("a");
@@ -269,16 +495,11 @@ async function deleteImage(record, btn) {
     if (state.base && state.base.id === record.id) setMode("generate");
     await loadLibrary();
     toast("Deleted.");
-  } catch (err) {
-    toast(err.message, true);
-  }
+  } catch (err) { toast(err.message, true); }
 }
 
 /* ---- Lightbox ---- */
-function openLightbox(record) {
-  el.lightboxImg.src = `/library/${record.file}`;
-  el.lightbox.hidden = false;
-}
+function openLightbox(record) { el.lightboxImg.src = `/library/${record.file}`; el.lightbox.hidden = false; }
 function closeLightbox() { el.lightbox.hidden = true; el.lightboxImg.src = ""; }
 
 /* ---- Config ---- */
@@ -291,36 +512,43 @@ async function loadConfig() {
       state.resolution = cfg.defaults.resolution || state.resolution;
       state.keyingSafe = cfg.defaults.keyingSafe ?? state.keyingSafe;
     }
+    if (cfg.model) el && ($("modelName").textContent = "Nano Banana Pro");
     el.keyPill.className = "pill " + (cfg.hasKey ? "ok" : "bad");
     el.keyPill.textContent = cfg.hasKey ? "key set" : "no API key";
     if (!cfg.hasKey) toast("No OpenRouter key found — add OPENROUTER_API_KEY to .env and restart.", true);
-    renderChips();
   } catch {
     el.keyPill.className = "pill bad";
     el.keyPill.textContent = "server error";
   }
+  renderChips();
+  updateEstimate();
 }
 
 /* ---- Wire up ---- */
 function init() {
-  document.getElementById("brandIcon").innerHTML = icon("image", 20);
-  document.getElementById("libIcon").innerHTML = icon("library", 16);
+  $("brandIcon").innerHTML = icon("image", 20);
+  $("libIcon").innerHTML = icon("library", 16);
+  $("eyeIcon").innerHTML = icon("eye", 15);
+  $("resetIcon").innerHTML = icon("eraser", 15);
 
+  renderSections();
   renderChips();
+  updateEstimate();
   setMode("generate");
 
   el.keyingChip.onclick = () => { state.keyingSafe = !state.keyingSafe; renderChips(); };
+  el.previewBtn.onclick = preview;
   el.goBtn.onclick = go;
-  el.clearBtn.onclick = () => { setMode("generate"); };
+  el.clearBtn.onclick = () => setMode("generate");
+  el.resetBtn.onclick = resetPills;
+  el.refreshBtn.onclick = loadLibrary;
 
   // Uploads
   el.dropzone.onclick = () => el.fileInput.click();
   el.dropzone.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); el.fileInput.click(); } };
   el.fileInput.onchange = () => { addFiles(el.fileInput.files); el.fileInput.value = ""; };
-  ["dragover", "dragenter"].forEach((ev) =>
-    el.dropzone.addEventListener(ev, (e) => { e.preventDefault(); el.dropzone.classList.add("dragover"); }));
-  ["dragleave", "drop"].forEach((ev) =>
-    el.dropzone.addEventListener(ev, (e) => { e.preventDefault(); el.dropzone.classList.remove("dragover"); }));
+  ["dragover", "dragenter"].forEach((ev) => el.dropzone.addEventListener(ev, (e) => { e.preventDefault(); el.dropzone.classList.add("dragover"); }));
+  ["dragleave", "drop"].forEach((ev) => el.dropzone.addEventListener(ev, (e) => { e.preventDefault(); el.dropzone.classList.remove("dragover"); }));
   el.dropzone.addEventListener("drop", (e) => { if (e.dataTransfer?.files?.length) addFiles(e.dataTransfer.files); });
 
   // Lightbox
@@ -328,10 +556,8 @@ function init() {
   el.lightbox.onclick = (e) => { if (e.target === el.lightbox) closeLightbox(); };
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeLightbox(); });
 
-  // Ctrl/Cmd+Enter to submit
-  el.prompt.addEventListener("keydown", (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); go(); }
-  });
+  // Ctrl/Cmd+Enter to generate from the prompt box
+  el.promptOut.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); go(); } });
 
   loadConfig();
   loadLibrary();
