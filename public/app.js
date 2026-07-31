@@ -126,6 +126,7 @@ const state = {
   count: 1,
   keyingSafe: false,
   busy: false,
+  balance: null,
   library: [],
   sort: "newest",
   perPage: 12,
@@ -433,12 +434,12 @@ async function go() {
   const payload = JSON.stringify(body);
 
   setBusy(true, 0, count);
-  let done = 0, ok = 0;
+  let done = 0, ok = 0, spent = 0;
   const errors = [];
   const one = () =>
     fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: payload })
-      .then(async (res) => { const data = await res.json(); if (!res.ok) throw new Error(data.error || "Generation failed."); })
-      .then(() => { ok++; })
+      .then(async (res) => { const data = await res.json(); if (!res.ok) throw new Error(data.error || "Generation failed."); return data; })
+      .then((data) => { ok++; if (typeof data.cost === "number") spent += data.cost; })
       .catch((e) => { errors.push(e.message); })
       .finally(() => { done++; setBusy(true, done, count); });
   await Promise.all(Array.from({ length: count }, one));
@@ -449,7 +450,8 @@ async function go() {
   setMode("generate");
   state.page = 1; // jump to the page showing the newest results
   await loadLibrary();
-  loadBalance(); // credit was just spent — refresh remaining
+  applySpend(spent);                 // instant, accurate deduction from what was just spent
+  setTimeout(loadBalance, 6000);     // reconcile once OpenRouter's usage accounting catches up
   setBusy(false);
 
   const noun = wasAdjust ? "Adjustment" : "Background";
@@ -623,21 +625,32 @@ async function loadConfig() {
   renderChips();
   updateEstimate();
 }
-async function loadBalance() {
+function renderBalance() {
   el.balancePill.style.cursor = "pointer";
+  if (typeof state.balance === "number") {
+    el.balancePill.className = "pill ok";
+    el.balancePill.innerHTML = `${icon("wallet", 13)} <span class="num">$${state.balance.toFixed(2)}</span>`;
+  } else {
+    el.balancePill.className = "pill";
+    el.balancePill.innerHTML = `${icon("wallet", 13)} <span class="num">$—</span>`;
+  }
+}
+// Authoritative refresh from OpenRouter (their usage accounting lags a few seconds).
+async function loadBalance() {
   try {
     const res = await fetch("/api/balance");
     const b = await res.json();
-    if (typeof b.remaining === "number") {
-      el.balancePill.className = "pill ok";
-      el.balancePill.innerHTML = `${icon("wallet", 13)} <span class="num">$${b.remaining.toFixed(2)}</span>`;
-    } else {
-      el.balancePill.className = "pill";
-      el.balancePill.innerHTML = `${icon("wallet", 13)} <span class="num">$—</span>`;
-    }
+    state.balance = typeof b.remaining === "number" ? b.remaining : null;
   } catch {
-    el.balancePill.className = "pill";
-    el.balancePill.innerHTML = `${icon("wallet", 13)} <span class="num">$—</span>`;
+    state.balance = null;
+  }
+  renderBalance();
+}
+// Instant, accurate update using the cost each generation reports back.
+function applySpend(amount) {
+  if (typeof state.balance === "number" && amount > 0) {
+    state.balance = Math.max(0, state.balance - amount);
+    renderBalance();
   }
 }
 
