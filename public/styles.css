@@ -172,7 +172,8 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 .controls-row { display: flex; flex-wrap: wrap; gap: 16px 30px; align-items: flex-start; }
 .controls-row .control { min-width: 0; }
 /* keep every control's interactive row the same height, vertically centered */
-.controls-row .chips, .controls-row .seed-row, .controls-row .switch { min-height: 32px; align-items: center; }
+.controls-row .chips, .controls-row .seed-row, .controls-row .switch { min-height: 30px; align-items: center; }
+.controls-row .chip { height: 30px; padding-top: 0; padding-bottom: 0; display: inline-flex; align-items: center; }
 
 /* Base image slot + upload zone */
 .dropzone {
@@ -289,8 +290,8 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 .card .seed:hover { color: var(--text); }
 
 .seed-row { display: flex; gap: 8px; align-items: center; }
-.seed-row input { width: 116px; height: 32px; padding: 0 8px; font-size: 12.5px; font-family: var(--mono); font-variant-numeric: tabular-nums; }
-.seed-row .btn { flex: none; height: 32px; padding: 0 7px; }
+.seed-row input { width: 116px; height: 30px; padding: 0 8px; font-size: 12.5px; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.seed-row .btn { flex: none; height: 30px; padding: 0 7px; }
 
 .empty { color: var(--faint); text-align: center; padding: 40px 10px; font-size: 13px; }
 
