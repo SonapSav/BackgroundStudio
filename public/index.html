@@ -20,8 +20,15 @@
     <div id="modeBanner" class="mode-banner" hidden></div>
 
     <div class="metarow">
-      <span class="metaitem">Model <b id="modelName">Nano Banana Pro</b></span>
-      <span class="metaitem">Est. cost <b id="estCost" class="mono">≈ $—</b> <span class="hint">approx · actual shown per image</span></span>
+      <div class="metaitem">
+        <span class="metalabel">Model</span>
+        <span class="metavalue"><span class="metaicon" id="metaModelIcon"></span><span id="modelName">Nano Banana Pro</span></span>
+      </div>
+      <span class="metadiv"></span>
+      <div class="metaitem">
+        <span class="metalabel">Est. cost / image</span>
+        <span class="metavalue"><span class="cost mono" id="estCost">≈ $—</span> <span class="metahint">actual billed per image</span></span>
+      </div>
     </div>
 
     <!-- Base image — persistent drop target; drag a library card here to adjust it -->

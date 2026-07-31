@@ -347,13 +347,17 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 
 /* --- Meta row (model / estimate) ------------------------------------------ */
 .metarow {
-  display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center;
-  padding: 10px 12px; margin-bottom: 14px;
-  border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2);
-  font-size: 12px; color: var(--muted);
+  display: flex; align-items: stretch; margin-bottom: 14px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface-2); overflow: hidden;
 }
-.metaitem b { color: var(--text); font-weight: 600; }
-.metaitem .mono { color: var(--accent); }
+.metaitem { display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 10px 16px; min-width: 0; }
+.metalabel { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; color: var(--faint); }
+.metavalue { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text); }
+.metaicon { color: var(--accent); display: inline-flex; }
+.metavalue .cost { color: var(--accent); font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 700; }
+.metahint { font-size: 11px; font-weight: 400; color: var(--faint); font-family: var(--mono); }
+.metadiv { width: 1px; background: var(--border); align-self: stretch; flex: none; }
 
 /* --- Collapsible pill section (BRANDING.md §6) ---------------------------- */
 .sec {

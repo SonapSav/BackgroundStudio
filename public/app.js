@@ -786,6 +786,7 @@ function init() {
   $("resetIcon").innerHTML = icon("eraser", 15);
   $("dropAdjIcon").innerHTML = icon("wand", 15);
   $("dropRefIcon").innerHTML = icon("image", 15);
+  $("metaModelIcon").innerHTML = icon("sparkles", 14);
 
   renderSections();
   renderChips();
