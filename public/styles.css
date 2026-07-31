@@ -169,8 +169,10 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 
 /* --- Compose layout ------------------------------------------------------- */
 .field { margin-bottom: 14px; }
-.controls-row { display: flex; flex-wrap: wrap; gap: 20px; }
+.controls-row { display: flex; flex-wrap: wrap; gap: 16px 30px; align-items: flex-start; }
 .controls-row .control { min-width: 0; }
+/* keep every control's interactive row the same height, vertically centered */
+.controls-row .chips, .controls-row .seed-row, .controls-row .switch { min-height: 32px; align-items: center; }
 
 /* Base image slot + upload zone */
 .dropzone {
@@ -287,8 +289,8 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 .card .seed:hover { color: var(--text); }
 
 .seed-row { display: flex; gap: 8px; align-items: center; }
-.seed-row input { width: 128px; font-family: var(--mono); font-variant-numeric: tabular-nums; }
-.seed-row .btn { flex: none; padding: 8px 10px; }
+.seed-row input { width: 122px; height: 32px; padding: 0 11px; font-size: 12.5px; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.seed-row .btn { flex: none; height: 32px; padding: 0 10px; }
 
 .empty { color: var(--faint); text-align: center; padding: 40px 10px; font-size: 13px; }
 
@@ -508,7 +510,7 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 @media (max-width: 560px) { .foot-right { text-align: left; } }
 
 /* --- Toggle switch -------------------------------------------------------- */
-.switch { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; user-select: none; padding-top: 4px; }
+.switch { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; user-select: none; }
 .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
 .switch .track {
   position: relative; flex: none; width: 40px; height: 22px; border-radius: 999px;
