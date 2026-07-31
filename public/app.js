@@ -41,7 +41,7 @@ const SECTIONS = [
     custom: { key: "propsText", ph: "Other objects, comma-separated — e.g. vintage radio, ladder" },
   },
   {
-    title: "Style & Medium", hint: "look · rendering", open: true,
+    title: "Style & Medium", hint: "look · rendering", open: false,
     groups: [{ key: "style", label: "Medium / style", pills: [
       "Photorealistic", "Cinematic film still", "Studio photography", "3D render", "Octane render",
       "Digital painting", "Concept art", "Illustration", "Anime", "Watercolor", "Oil painting",
