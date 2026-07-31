@@ -171,8 +171,8 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 .field { margin-bottom: 14px; }
 .controls-row { display: flex; flex-wrap: wrap; gap: 16px 30px; align-items: flex-start; }
 .controls-row .control { min-width: 0; }
-/* keep every control's interactive row the same height, vertically centered */
-.controls-row .chips, .controls-row .seed-row, .controls-row .switch { min-height: 32px; align-items: center; }
+/* content rows sit at their natural 28px and top-align; center the shorter toggle to match */
+.controls-row .switch { min-height: 28px; align-items: center; }
 
 /* Base image slot + upload zone */
 .dropzone {
