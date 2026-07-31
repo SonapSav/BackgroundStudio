@@ -1,0 +1,17 @@
+#!/bin/sh
+# Enforce the co-author trailer on every commit.
+#
+# Committing standard for this repo:
+#   Author:       Panos Vasilopoulos <sonap.sav@gmail.com>
+#   Co-authored-by: Claude Opus 4.8 <noreply@anthropic.com>
+#
+# The author is pinned via `git config user.name/user.email` (see repo setup).
+# This hook guarantees the co-author trailer is present on every commit,
+# appending it only when an identical line is not already there (idempotent).
+
+COMMIT_MSG_FILE="$1"
+CO_AUTHOR="Co-authored-by: Claude Opus 4.8 <noreply@anthropic.com>"
+
+if ! grep -qiF "$CO_AUTHOR" "$COMMIT_MSG_FILE"; then
+    git interpret-trailers --trailer "$CO_AUTHOR" --in-place "$COMMIT_MSG_FILE"
+fi

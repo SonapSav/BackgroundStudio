@@ -1,0 +1,6 @@
+# Normalize line endings: let Git decide text vs binary, store LF in the repo.
+* text=auto
+
+# Shell scripts and Git hooks must stay LF so they run under sh on any platform.
+*.sh text eol=lf
+.githooks/* text eol=lf
