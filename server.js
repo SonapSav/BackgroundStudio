@@ -24,6 +24,25 @@ app.get("/api/config", (_req, res) => {
   });
 });
 
+// Remaining OpenRouter credit (key stays server-side).
+app.get("/api/balance", async (_req, res) => {
+  const key = process.env.OPENROUTER_API_KEY;
+  if (!key) return res.json({ hasKey: false, remaining: null });
+  try {
+    const r = await fetch("https://openrouter.ai/api/v1/credits", {
+      headers: { Authorization: `Bearer ${key}` },
+    });
+    const j = await r.json();
+    if (!r.ok) return res.json({ hasKey: true, remaining: null, error: j?.error?.message || `HTTP ${r.status}` });
+    const total = j?.data?.total_credits;
+    const used = j?.data?.total_usage;
+    const remaining = typeof total === "number" && typeof used === "number" ? total - used : null;
+    res.json({ hasKey: true, remaining });
+  } catch (err) {
+    res.json({ hasKey: true, remaining: null, error: err.message });
+  }
+});
+
 app.get("/api/library", async (_req, res, next) => {
   try {
     res.json(await library.list());

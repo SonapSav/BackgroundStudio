@@ -7,6 +7,8 @@ const ICONS = {
   wand: `<path d="m15 4 1 1"/><path d="m8.5 8.5 11-11"/><path d="M14 7 3 18l3 3L17 10"/><path d="m18 13 1 1"/>`,
   eye: `<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>`,
   eraser: `<path d="m7 21-4.3-4.3a1 1 0 0 1 0-1.4L14 4a2 2 0 0 1 2.8 0l4.2 4.2a2 2 0 0 1 0 2.8L11 21"/><path d="M22 21H7"/>`,
+  wallet: `<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/>`,
+  check: `<path d="M20 6 9 17l-5-5"/>`,
 };
 function icon(name, size = 16) {
   return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" ` +
@@ -135,7 +137,7 @@ Object.keys(PILLS).forEach((k) => { state.sel[k] = new Set(); });
 /* ---- DOM ---- */
 const $ = (id) => document.getElementById(id);
 const el = {
-  keyPill: $("keyPill"), sessionCost: $("sessionCost"), estCost: $("estCost"),
+  keyPill: $("keyPill"), balancePill: $("balancePill"), sessionCost: $("sessionCost"), estCost: $("estCost"),
   baseField: $("baseField"), baseSlot: $("baseSlot"),
   uploadLabel: $("uploadLabel"), dropzone: $("dropzone"), dropText: $("dropText"),
   fileInput: $("fileInput"), thumbs: $("thumbs"),
@@ -427,6 +429,7 @@ async function go() {
     setMode("generate");
     state.page = 1; // jump to the page showing the newest result
     await loadLibrary();
+    loadBalance(); // credit was just spent — refresh remaining
     toast(wasAdjust ? "Adjustment saved." : "Background generated.");
   } catch (err) {
     toast(err.message, true);
@@ -586,7 +589,7 @@ async function loadConfig() {
     }
     if (cfg.model) el && ($("modelName").textContent = "Nano Banana Pro");
     el.keyPill.className = "pill " + (cfg.hasKey ? "ok" : "bad");
-    el.keyPill.textContent = cfg.hasKey ? "key set" : "no API key";
+    el.keyPill.innerHTML = cfg.hasKey ? `${icon("check", 13)} API key` : "no API key";
     if (!cfg.hasKey) toast("No OpenRouter key found — add OPENROUTER_API_KEY to .env and restart.", true);
   } catch {
     el.keyPill.className = "pill bad";
@@ -594,6 +597,23 @@ async function loadConfig() {
   }
   renderChips();
   updateEstimate();
+}
+async function loadBalance() {
+  el.balancePill.style.cursor = "pointer";
+  try {
+    const res = await fetch("/api/balance");
+    const b = await res.json();
+    if (typeof b.remaining === "number") {
+      el.balancePill.className = "pill ok";
+      el.balancePill.innerHTML = `${icon("wallet", 13)} <span class="num">$${b.remaining.toFixed(2)}</span>`;
+    } else {
+      el.balancePill.className = "pill";
+      el.balancePill.innerHTML = `${icon("wallet", 13)} <span class="num">$—</span>`;
+    }
+  } catch {
+    el.balancePill.className = "pill";
+    el.balancePill.innerHTML = `${icon("wallet", 13)} <span class="num">$—</span>`;
+  }
 }
 
 /* ---- Wire up ---- */
@@ -636,7 +656,10 @@ function init() {
   // Ctrl/Cmd+Enter to generate from the prompt box
   el.promptOut.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); go(); } });
 
+  el.balancePill.onclick = loadBalance;
+
   loadConfig();
+  loadBalance();
   loadLibrary();
 }
 init();
