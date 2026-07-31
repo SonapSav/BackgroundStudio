@@ -280,12 +280,16 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 /* --- Floating drop bar (appears while dragging a card) -------------------- */
 .drag-dropbar {
   position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 55;
-  padding: 12px 22px; border-radius: 999px;
-  background: var(--surface-2); border: 1px dashed var(--accent); color: var(--accent);
-  font-weight: 700; font-size: 13px; box-shadow: 0 10px 34px rgba(0, 0, 0, .55);
+  padding: 8px; border-radius: 999px;
+  background: var(--surface-2); border: 1px solid var(--border-strong);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, .55);
   display: inline-flex; align-items: center; gap: 8px;
 }
-.drag-dropbar.over { background: var(--accent-soft); border-style: solid; box-shadow: 0 0 0 3px var(--accent-soft), 0 10px 34px rgba(0, 0, 0, .55); }
+.drop-opt {
+  display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: 999px;
+  border: 1px dashed var(--border-strong); color: var(--muted); font-weight: 700; font-size: 12.5px;
+}
+.drop-opt.over { border-style: solid; border-color: var(--accent); background: var(--accent-soft); color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
 /* --- Lightbox ------------------------------------------------------------- */
 .lightbox {
