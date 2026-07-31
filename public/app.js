@@ -171,13 +171,23 @@ const el = {
 const fmtCost = (n) => (typeof n === "number" ? `$${n.toFixed(4)}` : "$—");
 const fmtTime = (iso) => new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
-// Library metadata label derived from ACTUAL pixels: "2K (2752×1536 · 4.2 MP)".
-// Tier comes from the real megapixel bucket, so pre-fix mislabeled records read true.
+// Snap actual pixels to the nearest ratio we offer, so it's accurate regardless
+// of the stored (requested) value.
+const RATIOS = [["16:9", 16 / 9], ["9:16", 9 / 16], ["1:1", 1]];
+function ratioLabel(r) {
+  if (r.width && r.height) {
+    const v = r.width / r.height;
+    return RATIOS.reduce((best, c) => (Math.abs(c[1] - v) < Math.abs(best[1] - v) ? c : best))[0];
+  }
+  return r.aspectRatio || "";
+}
+// Library metadata label derived from ACTUAL pixels: "16:9 · 2K (2752×1536 · 4.2 MP)".
+// Tier + ratio come from real dimensions, so pre-fix mislabeled records read true.
 function dimLabel(r) {
   if (r.width && r.height) {
     const mp = (r.width * r.height) / 1e6;
     const tier = mp < 2.5 ? "1K" : mp < 9 ? "2K" : "4K";
-    return `${tier} (${r.width}×${r.height} · ${mp.toFixed(1)} MP)`;
+    return `${ratioLabel(r)} · ${tier} (${r.width}×${r.height} · ${mp.toFixed(1)} MP)`;
   }
   return `${r.aspectRatio} · ${r.resolution}`;
 }
