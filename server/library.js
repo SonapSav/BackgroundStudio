@@ -126,6 +126,18 @@ export async function add(meta, bytes, mediaType = "image/png") {
   return record;
 }
 
+// Toggle/set the favorite flag on a record. Returns the updated record or null.
+export async function setFavorite(id, fav) {
+  return withIndexLock(async () => {
+    const records = await readIndex();
+    const rec = records.find((r) => r.id === id);
+    if (!rec) return null;
+    rec.favorite = !!fav;
+    await writeIndex(records);
+    return rec;
+  });
+}
+
 // Fill in width/height for any records missing them, read from the actual files.
 // Runs once at startup so pre-existing library entries get corrected dimensions.
 export async function backfillDimensions() {

@@ -18,6 +18,7 @@ const ICONS = {
   replace: `<path d="m16 3 4 4-4 4"/><path d="M20 7H9a5 5 0 0 0-5 5"/><path d="m8 21-4-4 4-4"/><path d="M4 17h11a5 5 0 0 0 5-5"/>`,
   user: `<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>`,
   dice: `<rect width="18" height="18" x="3" y="3" rx="3"/><circle cx="8" cy="8" r="1.2"/><circle cx="16" cy="16" r="1.2"/><circle cx="16" cy="8" r="1.2"/><circle cx="8" cy="16" r="1.2"/><circle cx="12" cy="12" r="1.2"/>`,
+  star: `<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>`,
 };
 // Semi-transparent person silhouette for the subject placement guide.
 const SUBJECT_SVG = `<svg viewBox="0 0 100 150" width="100%" height="100%" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
@@ -158,6 +159,8 @@ const state = {
   sort: "newest",
   perPage: 12,
   page: 1,
+  search: "",
+  favOnly: false,
   sel: {},            // { groupKey: Set(labels) }
   text: {},           // { sceneText, styleText, extraText }
 };
@@ -179,6 +182,7 @@ const el = {
   modeBanner: $("modeBanner"),
   grid: $("grid"), libEmpty: $("libEmpty"), libCount: $("libCount"), refreshBtn: $("refreshBtn"),
   sortSel: $("sortSel"), perPageSel: $("perPageSel"), pagination: $("pagination"),
+  librarySearch: $("librarySearch"), favFilter: $("favFilter"),
   lightbox: $("lightbox"), lightboxImg: $("lightboxImg"), lightboxClose: $("lightboxClose"),
   lbStage: $("lbStage"), lbOverlay: $("lbOverlay"), lbGrid: $("lbGrid"), lbSubject: $("lbSubject"),
   guideToggle: $("guideToggle"), lbGuideCtrls: $("lbGuideCtrls"), subjSize: $("subjSize"),
@@ -645,23 +649,33 @@ function renderPagination(pages) {
   });
   el.pagination.appendChild(mkBtn("Next ›", state.page + 1, { disabled: state.page >= pages }));
 }
+function filteredLibrary() {
+  let arr = sortedLibrary();
+  if (state.favOnly) arr = arr.filter((r) => r.favorite);
+  const q = state.search.trim().toLowerCase();
+  if (q) arr = arr.filter((r) => (r.prompt || "").toLowerCase().includes(q) || String(r.seed ?? "").includes(q));
+  return arr;
+}
 function renderLibrary() {
-  const all = sortedLibrary();
+  const all = filteredLibrary();
   const total = all.length;
+  const grandTotal = state.library.length;
   const pages = Math.max(1, Math.ceil(total / state.perPage));
   state.page = Math.min(Math.max(1, state.page), pages);
   const start = (state.page - 1) * state.perPage;
   const pageItems = all.slice(start, start + state.perPage);
 
   el.grid.innerHTML = "";
-  el.libCount.textContent = total ? `${total} image${total === 1 ? "" : "s"}` : "";
+  el.libCount.textContent = !grandTotal ? "" : total === grandTotal ? `${total} image${total === 1 ? "" : "s"}` : `${total} of ${grandTotal}`;
   el.libEmpty.hidden = total > 0;
+  el.libEmpty.textContent = grandTotal > 0 ? "No matches — try a different search or filter." : "No backgrounds yet. Generate your first one above.";
 
   pageItems.forEach((r) => {
     const card = document.createElement("div");
     card.className = "card";
     card.innerHTML = `
       <div class="shot">
+        <button class="fav${r.favorite ? " on" : ""}" type="button" title="Favorite">${icon("star", 15)}</button>
         ${r.kind === "adjust" ? `<span class="lineage">${icon("wand", 11)} adjusted</span>` : ""}
         <span class="drag-handle" title="Drag onto the base slot to adjust">${icon("grip", 14)}</span>
         <img src="/library/${r.file}" alt="" loading="lazy" draggable="false" />
@@ -707,6 +721,18 @@ function renderLibrary() {
     card.querySelector(".drag-handle").addEventListener("click", (e) => e.stopPropagation());
     const seedEl = card.querySelector(".seed");
     if (seedEl) seedEl.onclick = () => { el.seedInput.value = seedEl.dataset.seed; toast(`Seed ${seedEl.dataset.seed} set — reuse to reproduce.`); };
+    const favBtn = card.querySelector(".fav");
+    favBtn.onclick = async (e) => {
+      e.stopPropagation();
+      const next = !r.favorite;
+      r.favorite = next;
+      favBtn.classList.toggle("on", next);
+      try {
+        const res = await fetch(`/api/library/${r.id}/favorite`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ favorite: next }) });
+        if (!res.ok) throw new Error();
+        if (state.favOnly && !next) renderLibrary(); // drops out of a favorites-only view
+      } catch { r.favorite = !next; favBtn.classList.toggle("on", !next); toast("Couldn't update favorite.", true); }
+    };
     card.querySelector('[data-act="adjust"]').onclick = () => startAdjust(r);
     card.querySelector('[data-act="download"]').onclick = () => downloadImage(r);
     card.querySelector('[data-act="delete"]').onclick = (e) => deleteImage(r, e.currentTarget);
@@ -1009,6 +1035,10 @@ function init() {
   el.perPageSel.value = String(state.perPage);
   el.sortSel.onchange = () => { state.sort = el.sortSel.value; prefSet("bgstudio.sort", state.sort); state.page = 1; renderLibrary(); };
   el.perPageSel.onchange = () => { state.perPage = Number(el.perPageSel.value); prefSet("bgstudio.perPage", String(state.perPage)); state.page = 1; renderLibrary(); };
+
+  $("favFilterIcon").innerHTML = icon("star", 13);
+  el.librarySearch.oninput = () => { state.search = el.librarySearch.value; state.page = 1; renderLibrary(); };
+  el.favFilter.onclick = () => { state.favOnly = !state.favOnly; el.favFilter.classList.toggle("active", state.favOnly); state.page = 1; renderLibrary(); };
 
   // Uploads
   el.dropzone.onclick = () => el.fileInput.click();

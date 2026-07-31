@@ -180,6 +180,16 @@ app.post("/api/adjust", async (req, res, next) => {
   }
 });
 
+app.post("/api/library/:id/favorite", async (req, res, next) => {
+  try {
+    const rec = await library.setFavorite(req.params.id, Boolean(req.body && req.body.favorite));
+    if (!rec) return res.status(404).json({ error: "Not found." });
+    res.json(rec);
+  } catch (err) {
+    next(err);
+  }
+});
+
 app.delete("/api/library/:id", async (req, res, next) => {
   try {
     const ok = await library.remove(req.params.id);
