@@ -14,6 +14,7 @@ const ICONS = {
   sparkles: `<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/>`,
   download: `<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>`,
   trash: `<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>`,
+  crop: `<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>`,
 };
 function icon(name, size = 16) {
   return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" ` +
@@ -142,6 +143,7 @@ const state = {
   keyingSafe: false,
   busy: false,
   balance: null,
+  region: null, // { mode:'add'|'remove', bbox:{x,y,w,h}, positionLabel, maskDataUri }
   library: [],
   sort: "newest",
   perPage: 12,
@@ -169,6 +171,10 @@ const el = {
   lightbox: $("lightbox"), lightboxImg: $("lightboxImg"), lightboxClose: $("lightboxClose"),
   dropBar: $("dragDropBar"), dropOptAdjust: $("dropOptAdjust"), dropOptRef: $("dropOptRef"),
   genOverlay: $("genOverlay"), genTitle: $("genTitle"),
+  regionRow: $("regionRow"), markRegionBtn: $("markRegionBtn"), regionChip: $("regionChip"),
+  regionEditor: $("regionEditor"), regCanvas: $("regCanvas"), regModeChips: $("regModeChips"),
+  regHint: $("regHint"), regCloseBtn: $("regCloseBtn"), regClearBtn: $("regClearBtn"),
+  regCancelBtn: $("regCancelBtn"), regApplyBtn: $("regApplyBtn"),
 };
 
 /* ---- Helpers ---- */
@@ -408,9 +414,12 @@ function setMode(mode, base = null) {
   const adjust = mode === "adjust";
 
   el.clearBtn.hidden = !adjust;
+  el.regionRow.hidden = !adjust;
   el.baseLabel.classList.toggle("active", adjust);
   el.goLabel.textContent = adjust ? "Adjust" : "Generate";
   el.goIcon.innerHTML = icon(adjust ? "wand" : "sparkles", 15);
+  state.region = null; // marking is per adjust session
+  renderRegionUI();
   el.uploadLabel.innerHTML = adjust
     ? `Objects to add <span class="hint narrow-hide">optional — composited into the adjustment</span>`
     : `Reference images <span class="hint narrow-hide">optional — steers the look</span>`;
@@ -480,7 +489,16 @@ function preview() {
 async function go() {
   if (state.busy) return;
   const prompt = composeFinalPrompt();
-  if (!prompt) { toast("Add a prompt — pick pills or type one.", true); el.promptOut.focus(); return; }
+  const region = state.mode === "adjust" ? state.region : null;
+  const canProceedWithoutPrompt =
+    region && (region.mode === "remove" || (region.mode === "add" && state.uploads.length > 0));
+  if (!prompt && !canProceedWithoutPrompt) {
+    toast(region && region.mode === "add"
+      ? "For an Add region, type what to add or upload an object photo."
+      : "Add a prompt — pick pills or type one.", true);
+    el.promptOut.focus();
+    return;
+  }
   el.promptOut.value = prompt; // reflect exactly what will be sent
 
   const count = state.count;
@@ -497,6 +515,10 @@ async function go() {
     url = "/api/adjust";
     body.sourceId = state.base.id;
     body.extraImages = state.uploads.map((u) => u.dataUri);
+    if (region) {
+      body.mask = region.maskDataUri;
+      body.region = { mode: region.mode, positionLabel: region.positionLabel };
+    }
   } else {
     url = "/api/generate";
     body.referenceImages = state.uploads.map((u) => u.dataUri);
@@ -692,6 +714,101 @@ async function addLibraryImageRef(rec) {
 function showDropBar() { el.dropBar.hidden = false; }
 function hideDropBar() { el.dropBar.hidden = true; el.dropOptAdjust.classList.remove("over"); el.dropOptRef.classList.remove("over"); }
 
+/* ---- Region editor (mark an area to add/remove) ---- */
+const reg = { mode: "remove", img: null, natW: 0, natH: 0, rect: null, drawing: false, start: null };
+
+function posLabel(cxN, cyN) {
+  const col = cxN < 0.34 ? "left" : cxN > 0.66 ? "right" : "center";
+  const row = cyN < 0.34 ? "top" : cyN > 0.66 ? "bottom" : "middle";
+  if (col === "center" && row === "middle") return "center";
+  if (row === "middle") return col;
+  if (col === "center") return row;
+  return `${row}-${col}`;
+}
+function makeMaskDataUri(w, h, r) {
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  const g = c.getContext("2d");
+  g.fillStyle = "#000"; g.fillRect(0, 0, w, h);
+  g.fillStyle = "#fff"; g.fillRect(Math.round(r.x), Math.round(r.y), Math.round(r.w), Math.round(r.h));
+  return c.toDataURL("image/png");
+}
+const regColor = () => (reg.mode === "add" ? "232,162,74" : "255,111,111");
+function regDraw() {
+  const c = el.regCanvas, g = c.getContext("2d");
+  g.clearRect(0, 0, c.width, c.height);
+  if (reg.img) g.drawImage(reg.img, 0, 0, c.width, c.height);
+  if (reg.rect) {
+    const { x, y, w, h } = reg.rect;
+    g.fillStyle = `rgba(${regColor()},0.18)`;
+    g.fillRect(x, y, w, h);
+    g.strokeStyle = `rgb(${regColor()})`;
+    g.lineWidth = 2;
+    g.strokeRect(x, y, w, h);
+  }
+}
+function regCanvasPos(e) {
+  const r = el.regCanvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - r.left) * (el.regCanvas.width / r.width),
+    y: (e.clientY - r.top) * (el.regCanvas.height / r.height),
+  };
+}
+function setRegMode(mode) {
+  reg.mode = mode;
+  el.regModeChips.querySelectorAll(".chip").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
+  el.regHint.textContent = mode === "add"
+    ? "Drag to mark WHERE to add — then describe what in the prompt."
+    : "Drag a box around the object to remove.";
+  regDraw();
+}
+function openRegionEditor() {
+  if (!state.base) return;
+  const img = new Image();
+  img.onload = () => {
+    reg.img = img; reg.natW = img.naturalWidth; reg.natH = img.naturalHeight;
+    const scale = Math.min((window.innerWidth * 0.9) / reg.natW, (window.innerHeight * 0.6) / reg.natH, 1);
+    el.regCanvas.width = Math.round(reg.natW * scale);
+    el.regCanvas.height = Math.round(reg.natH * scale);
+    reg.rect = null;
+    if (state.region && state.region.bbox) {
+      const b = state.region.bbox, s = el.regCanvas.width / reg.natW;
+      reg.rect = { x: b.x * s, y: b.y * s, w: b.w * s, h: b.h * s };
+    }
+    setRegMode(state.region ? state.region.mode : reg.mode);
+    el.regionEditor.hidden = false;
+  };
+  img.src = `/library/${state.base.file}`;
+}
+function closeRegionEditor() { el.regionEditor.hidden = true; }
+function applyRegion() {
+  if (!reg.rect || Math.abs(reg.rect.w) < 6 || Math.abs(reg.rect.h) < 6) { toast("Draw a box on the image first.", true); return; }
+  const s = reg.natW / el.regCanvas.width;
+  const x = (reg.rect.w < 0 ? reg.rect.x + reg.rect.w : reg.rect.x);
+  const y = (reg.rect.h < 0 ? reg.rect.y + reg.rect.h : reg.rect.y);
+  const nx = Math.max(0, x * s), ny = Math.max(0, y * s);
+  const nw = Math.min(reg.natW - nx, Math.abs(reg.rect.w) * s), nh = Math.min(reg.natH - ny, Math.abs(reg.rect.h) * s);
+  const bbox = { x: nx, y: ny, w: nw, h: nh };
+  const positionLabel = posLabel((nx + nw / 2) / reg.natW, (ny + nh / 2) / reg.natH);
+  state.region = { mode: reg.mode, bbox, positionLabel, maskDataUri: makeMaskDataUri(reg.natW, reg.natH, bbox) };
+  closeRegionEditor();
+  renderRegionUI();
+  toast(`Region set: ${reg.mode === "add" ? "add" : "remove"} · ${positionLabel}.`);
+}
+function clearRegion() { state.region = null; renderRegionUI(); }
+function renderRegionUI() {
+  const r = state.region;
+  el.markRegionBtn.innerHTML = `${icon("crop", 13)} ${r ? "Edit region" : "Mark region"}`;
+  if (r) {
+    el.regionChip.hidden = false;
+    el.regionChip.innerHTML = `${icon(r.mode === "add" ? "sparkles" : "trash", 12)} ${r.mode === "add" ? "Add" : "Remove"} · ${r.positionLabel} <span class="x" title="Clear region">✕</span>`;
+    el.regionChip.querySelector(".x").onclick = clearRegion;
+  } else {
+    el.regionChip.hidden = true;
+    el.regionChip.innerHTML = "";
+  }
+}
+
 function startAdjust(record) {
   setMode("adjust", record);
   state.uploads = [];
@@ -849,7 +966,28 @@ function init() {
   // Lightbox
   el.lightboxClose.onclick = closeLightbox;
   el.lightbox.onclick = (e) => { if (e.target === el.lightbox) closeLightbox(); };
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeLightbox(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeLightbox(); closeRegionEditor(); } });
+
+  // Region editor (button icon is set by renderRegionUI)
+  el.markRegionBtn.onclick = openRegionEditor;
+  el.regCloseBtn.onclick = closeRegionEditor;
+  el.regCancelBtn.onclick = closeRegionEditor;
+  el.regClearBtn.onclick = () => { reg.rect = null; regDraw(); };
+  el.regApplyBtn.onclick = applyRegion;
+  el.regionEditor.onclick = (e) => { if (e.target === el.regionEditor) closeRegionEditor(); };
+  el.regModeChips.querySelectorAll(".chip").forEach((b) => (b.onclick = () => setRegMode(b.dataset.mode)));
+  el.regCanvas.addEventListener("pointerdown", (e) => {
+    reg.drawing = true; reg.start = regCanvasPos(e);
+    reg.rect = { x: reg.start.x, y: reg.start.y, w: 0, h: 0 };
+    try { el.regCanvas.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+  });
+  el.regCanvas.addEventListener("pointermove", (e) => {
+    if (!reg.drawing) return;
+    const p = regCanvasPos(e);
+    reg.rect = { x: reg.start.x, y: reg.start.y, w: p.x - reg.start.x, h: p.y - reg.start.y };
+    regDraw();
+  });
+  el.regCanvas.addEventListener("pointerup", () => { reg.drawing = false; });
 
   // Ctrl/Cmd+Enter to generate from the prompt box
   el.promptOut.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); go(); } });

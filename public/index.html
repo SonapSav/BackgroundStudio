@@ -35,6 +35,10 @@
     <div class="field" id="baseField">
       <p class="microlabel" id="baseLabel">Base image <span class="hint narrow-hide">drag a library card here, or use a card's Adjust button</span></p>
       <div class="base-slot empty" id="baseSlot"></div>
+      <div class="region-row" id="regionRow" hidden>
+        <button class="btn small" id="markRegionBtn" type="button"><span id="markRegionIcon"></span> Mark region</button>
+        <span class="region-chip" id="regionChip" hidden></span>
+      </div>
     </div>
 
     <!-- Reference / object uploads -->
@@ -129,6 +133,28 @@
     </div>
   </div>
 </footer>
+
+<div class="regedit" id="regionEditor" hidden>
+  <div class="regedit-panel">
+    <div class="regedit-head">
+      <span class="regedit-title">Mark a region</span>
+      <div class="chips" id="regModeChips">
+        <button class="chip" data-mode="add" type="button">Add here</button>
+        <button class="chip" data-mode="remove" type="button">Remove this</button>
+      </div>
+      <span class="hint" id="regHint">Drag on the image to mark the area.</span>
+      <button class="btn small" id="regCloseBtn" type="button" style="margin-left:auto">Close</button>
+    </div>
+    <div class="regedit-stage">
+      <canvas id="regCanvas"></canvas>
+    </div>
+    <div class="regedit-foot">
+      <button class="btn" id="regClearBtn" type="button">Clear</button>
+      <button class="btn" id="regCancelBtn" type="button">Cancel</button>
+      <button class="btn primary" id="regApplyBtn" type="button">Apply region</button>
+    </div>
+  </div>
+</div>
 
 <div class="genoverlay" id="genOverlay" hidden>
   <div class="genbox">

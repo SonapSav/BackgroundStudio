@@ -304,6 +304,35 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 }
 .drop-opt.over { border-style: solid; border-color: var(--accent); background: var(--accent-soft); color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
+/* --- Region editor -------------------------------------------------------- */
+.region-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+.region-chip {
+  display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600;
+  padding: 5px 10px; border-radius: 999px; color: var(--accent-2);
+  border: 1px solid rgba(79, 200, 189, .3); background: rgba(79, 200, 189, .08);
+}
+.region-chip .x { cursor: pointer; opacity: .7; font-weight: 700; }
+.region-chip .x:hover { opacity: 1; color: var(--text); }
+
+.regedit {
+  position: fixed; inset: 0; z-index: 120; padding: 24px;
+  background: rgba(6, 7, 10, .82); backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+}
+.regedit-panel {
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius);
+  width: 100%; max-width: min(1000px, 94vw); display: flex; flex-direction: column; gap: 12px; padding: 14px;
+}
+.regedit-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.regedit-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.regedit-stage {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden;
+}
+#regCanvas { display: block; max-width: 100%; cursor: crosshair; touch-action: none; }
+.regedit-foot { display: flex; gap: 10px; }
+.regedit-foot .btn { flex: 1; }
+
 /* --- Generating overlay (glassmorphic, full-screen) ----------------------- */
 .genoverlay {
   position: fixed; inset: 0; z-index: 200;

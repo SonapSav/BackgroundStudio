@@ -11,6 +11,27 @@ const PORT = process.env.PORT || 3016;
 
 const DEFAULTS = { aspectRatio: "16:9", resolution: "2K", keyingSafe: false };
 
+// Compose an edit instruction when the user marked a region (add/remove).
+function buildEditInstruction({ userPrompt, region, hasMask, hasObjects }) {
+  const where = region?.positionLabel ? ` in the ${region.positionLabel} area of the image` : "";
+  const p = (userPrompt || "").trim();
+  const parts = [];
+  if (region?.mode === "remove") {
+    parts.push(`Remove the main object located${where} and realistically fill that area with the surrounding background so the removal is seamless.`);
+    if (p) parts.push(p);
+  } else if (region?.mode === "add") {
+    parts.push(`Add ${p || "the provided element"}${where}.`);
+    if (hasObjects) parts.push("Use the provided object photo(s) as the item to add, matching the scene's lighting, perspective, and shadows.");
+  } else if (p) {
+    parts.push(p);
+  }
+  if (hasMask) {
+    parts.push("A mask image is also provided: apply the change only within the white region of the mask and keep everything else in the scene identical. Do not render the mask or any black-and-white shapes in the output.");
+  }
+  parts.push("Preserve the overall composition, camera angle, and all untouched areas exactly.");
+  return parts.filter(Boolean).join(" ");
+}
+
 const app = express();
 app.use(express.json({ limit: "25mb" })); // base64 image uploads
 
@@ -99,6 +120,8 @@ app.post("/api/adjust", async (req, res, next) => {
       sourceId,
       prompt,
       extraImages = [],
+      mask = null,
+      region = null,
       aspectRatio = DEFAULTS.aspectRatio,
       resolution = DEFAULTS.resolution,
       keyingSafe = DEFAULTS.keyingSafe,
@@ -110,9 +133,15 @@ app.post("/api/adjust", async (req, res, next) => {
     const sourceBytes = await library.readImageBytes(source);
     const sourceDataUri = `data:image/${source.file.split(".").pop()};base64,${sourceBytes.toString("base64")}`;
 
+    // base image first, then the mask (if any), then object photos to add
+    const images = [sourceDataUri, ...(mask ? [mask] : []), ...extraImages];
+    const instruction = region
+      ? buildEditInstruction({ userPrompt: prompt, region, hasMask: Boolean(mask), hasObjects: extraImages.length > 0 })
+      : prompt;
+
     const result = await generateImage({
-      prompt,
-      images: [sourceDataUri, ...extraImages], // base image first, then objects to add
+      prompt: instruction,
+      images,
       aspectRatio,
       resolution,
       keyingSafe,
@@ -121,7 +150,7 @@ app.post("/api/adjust", async (req, res, next) => {
     const record = await library.add(
       {
         kind: "adjust",
-        prompt,
+        prompt: instruction,
         parentId: sourceId,
         aspectRatio,
         resolution,
@@ -129,6 +158,7 @@ app.post("/api/adjust", async (req, res, next) => {
         cost: result.cost,
         model: MODEL,
         extraImageCount: extraImages.length,
+        edit: region ? { mode: region.mode, position: region.positionLabel || null } : null,
       },
       result.bytes,
       result.mediaType
