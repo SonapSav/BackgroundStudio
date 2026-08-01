@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>User Guide · Background Studio</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e8a24a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='3' width='18' height='18' rx='2'/><circle cx='9' cy='9' r='2'/><path d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/></svg>" />
+<link rel="stylesheet" href="styles.css" />
+<style>
+  /* ---- Guide-specific layout (reuses the app's :root design tokens) ---- */
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); }
+  .g-top {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 12px 20px; background: rgba(21, 22, 29, .86); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+  .g-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; letter-spacing: .01em; }
+  .g-brand svg { color: var(--accent); }
+  .g-ver { font-size: 11px; font-weight: 700; color: var(--accent); background: var(--accent-soft);
+           border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px; }
+  .g-back { display: inline-flex; align-items: center; gap: 7px; text-decoration: none; font-size: 13px; font-weight: 600;
+            color: var(--muted); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 7px 12px; transition: .15s; }
+  .g-back:hover { color: var(--accent); border-color: var(--border-strong); background: var(--surface-2); }
+
+  .g-wrap { max-width: 1080px; margin: 0 auto; padding: 28px 20px 80px;
+            display: grid; grid-template-columns: 220px 1fr; gap: 40px; align-items: start; }
+
+  /* Table of contents */
+  .g-toc { position: sticky; top: 74px; font-size: 13.5px; }
+  .g-toc .g-toc-h { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--faint); margin: 0 0 10px 10px; }
+  .g-toc a { display: block; color: var(--muted); text-decoration: none; padding: 6px 10px; border-radius: var(--radius-sm);
+             border-left: 2px solid transparent; transition: .12s; }
+  .g-toc a:hover { color: var(--text); background: var(--surface-2); }
+  .g-toc a.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); }
+
+  .g-main { min-width: 0; }
+  .g-lede { font-size: 16px; line-height: 1.6; color: var(--muted); margin: 0 0 8px; }
+  .g-hero-h { font-size: 30px; font-weight: 800; letter-spacing: -.02em; margin: 0 0 12px; }
+
+  .g-sec { scroll-margin-top: 84px; padding-top: 28px; margin-top: 28px; border-top: 1px solid var(--border); }
+  .g-sec:first-of-type { border-top: 0; margin-top: 16px; }
+  .g-sec > h2 { display: flex; align-items: center; gap: 10px; font-size: 21px; font-weight: 700; margin: 0 0 6px; letter-spacing: -.01em; }
+  .g-sec > h2 .g-num { display: inline-grid; place-items: center; width: 26px; height: 26px; flex: none;
+                       font-size: 13px; font-weight: 800; color: var(--accent-ink); background: var(--accent); border-radius: 8px; }
+  .g-sec h3 { font-size: 15.5px; font-weight: 700; color: var(--text); margin: 22px 0 8px; }
+  .g-main p { line-height: 1.62; color: var(--muted); margin: 8px 0; }
+  .g-main strong { color: var(--text); font-weight: 650; }
+  .g-main a.inline { color: var(--accent); text-decoration: none; border-bottom: 1px solid rgba(232,162,74,.35); }
+  .g-main a.inline:hover { border-bottom-color: var(--accent); }
+  .g-main ol, .g-main ul { margin: 8px 0 8px; padding-left: 22px; line-height: 1.62; color: var(--muted); }
+  .g-main li { margin: 5px 0; }
+  .g-main li strong { color: var(--text); }
+
+  kbd { font-family: var(--mono); font-size: 11.5px; color: var(--text); background: var(--surface-3);
+        border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 6px; padding: 1px 6px; }
+  code { font-family: var(--mono); font-size: 12.5px; color: var(--accent-2); background: var(--surface-2);
+         border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; }
+  .pill-ref { display: inline-block; font-size: 12px; font-weight: 650; color: var(--text); background: var(--surface-3);
+              border: 1px solid var(--border-strong); border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
+
+  .g-callout { display: flex; gap: 12px; margin: 16px 0; padding: 13px 15px; border-radius: var(--radius-sm);
+               background: var(--surface-2); border: 1px solid var(--border); border-left: 3px solid var(--accent-2); }
+  .g-callout svg { flex: none; color: var(--accent-2); margin-top: 1px; }
+  .g-callout p { margin: 0; font-size: 13.5px; }
+  .g-callout.warn { border-left-color: var(--warn); }
+  .g-callout.warn svg { color: var(--warn); }
+
+  .g-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin: 14px 0; }
+  .g-card h3 { margin-top: 4px; }
+
+  .g-foot { max-width: 1080px; margin: 40px auto 0; padding: 22px 20px 0; border-top: 1px solid var(--border);
+            color: var(--faint); font-size: 12.5px; line-height: 1.6; }
+  .g-foot a { color: var(--muted); text-decoration: none; }
+  .g-foot a:hover { color: var(--accent); }
+
+  @media (max-width: 820px) {
+    .g-wrap { grid-template-columns: 1fr; gap: 20px; }
+    .g-toc { position: static; top: auto; order: -1; border: 1px solid var(--border); border-radius: var(--radius-sm);
+             background: var(--surface); padding: 12px; }
+    .g-toc a { border-left: 0; }
+    .g-hero-h { font-size: 25px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="g-top">
+  <div class="g-brand">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+    Background Studio <span class="g-ver">User Guide · v1.0.1</span>
+  </div>
+  <a class="g-back" href="index.html">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    Back to the app
+  </a>
+</div>
+
+<div class="g-wrap">
+  <!-- Table of contents -->
+  <aside class="g-toc" aria-label="Contents">
+    <p class="g-toc-h">Contents</p>
+    <nav id="toc">
+      <a href="#overview">Overview</a>
+      <a href="#quick-start">1 · Quick start</a>
+      <a href="#prompts">2 · Writing a prompt</a>
+      <a href="#settings">3 · Output settings</a>
+      <a href="#generating">4 · Generating</a>
+      <a href="#editing">5 · Editing an image</a>
+      <a href="#reviewing">6 · Reviewing your shot</a>
+      <a href="#exporting">7 · Exporting</a>
+      <a href="#library">8 · The library</a>
+      <a href="#tips">9 · Tips &amp; good to know</a>
+      <a href="#shortcuts">10 · Shortcuts</a>
+    </nav>
+  </aside>
+
+  <main class="g-main">
+    <p class="g-lede">The complete how-to for Background Studio.</p>
+    <h1 class="g-hero-h">Make backgrounds you can stand in front of.</h1>
+    <p>Background Studio generates photographic <strong>background scenes</strong> to sit behind your green-screen
+      (chroma-key) footage — the custom backdrops video creators composite themselves into. This guide walks through
+      every feature, from your first prompt to a broadcast-ready export.</p>
+
+    <!-- ============ OVERVIEW ============ -->
+    <section class="g-sec" id="overview">
+      <h2><span class="g-num">·</span> How it works, in one breath</h2>
+      <p>You describe a scene → the app generates it at the resolution and shape you choose → you can
+        <strong>edit</strong> the result (adjust, add/replace/remove things, reframe, upscale) → <strong>review</strong> it by
+        keying yourself over it right in the browser → then <strong>export</strong> it at an exact broadcast size and drop it
+        behind your footage. Everything you make is saved to a local <strong>library</strong> on your own machine.</p>
+      <div class="g-callout">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        <p>Images are generated by <strong>Nano Banana Pro</strong> (Google's Gemini 3 Pro Image) through OpenRouter, so each
+          generation costs a small amount of credit. The header shows your remaining balance; every image shows what it cost.</p>
+      </div>
+    </section>
+
+    <!-- ============ QUICK START ============ -->
+    <section class="g-sec" id="quick-start">
+      <h2><span class="g-num">1</span> Quick start</h2>
+      <p>Your first background in under a minute:</p>
+      <ol>
+        <li><strong>Describe the scene.</strong> Click <span class="pill-ref">pills</span> under <em>Scene &amp; subject</em>
+          (and the other groups) to build a prompt, and/or just type in the prompt box. Pills and your typed text merge into
+          one editable brief.</li>
+        <li><strong>Pick the shape and size.</strong> Set the <strong>aspect ratio</strong> (16:9 for landscape, 9:16 for
+          Shorts/Reels, 1:1 for square) and <strong>resolution</strong> (1K / 2K / 4K).</li>
+        <li><strong>Generate.</strong> Hit <span class="pill-ref">✦ Generate</span>. A "Generating" overlay appears; when it's
+          done, your image lands at the top of the library below.</li>
+      </ol>
+      <p>That's the core loop. Everything else in this guide makes that loop better — richer prompts, precise edits, and a
+        proper preview of how you'll look in front of the result.</p>
+    </section>
+
+    <!-- ============ PROMPTS ============ -->
+    <section class="g-sec" id="prompts">
+      <h2><span class="g-num">2</span> Writing a prompt</h2>
+
+      <h3>Pills + free text</h3>
+      <p>The <strong>guided prompt builder</strong> gives you pills for <em>scene &amp; subject, objects &amp; props, style,
+        light &amp; time, mood &amp; colour, camera &amp; composition,</em> and <em>detail</em>. Click any that fit. Whatever
+        you also type in the box is merged in — in Generate mode your scene leads and your text follows; in Adjust mode your
+        instruction leads. Use <span class="pill-ref">Reset pills</span> to clear selections and start over.</p>
+
+      <h3>Enhance prompt (optional)</h3>
+      <p>Flip the <strong>Enhance prompt</strong> toggle on and the app expands your short brief into a rich, detailed
+        scene description using a fast text model. When it's on, the expanded version appears in its own
+        <strong>editable</strong> field so you can fine-tune it before generating — the enhanced text is what actually gets
+        sent. Leave the toggle off to send your prompt exactly as written.</p>
+
+      <h3>Describe an image</h3>
+      <p>Have a reference photo whose <em>look</em> you want to reuse? Click <span class="pill-ref">⌗ Describe an image</span>
+        in the action bar and choose a file. A multimodal model writes a reusable background-scene prompt from it straight
+        into the prompt box — tweak it, then generate variations on that vibe. (It describes the <em>environment</em>, not any
+        specific person.)</p>
+      <div class="g-callout">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        <p>Want to see exactly what will be sent? Click <span class="pill-ref">◎ Preview prompt</span> to assemble (and, if
+          the toggle is on, enhance) the final text without generating.</p>
+      </div>
+
+      <h3>Reference images</h3>
+      <p>Drop images into the <strong>Reference images</strong> area (or click to choose) to steer the look — the model uses
+        them as visual references for the new background. In Adjust mode these same slots become the <em>objects to add</em>
+        (see <a class="inline" href="#editing">Editing</a>).</p>
+    </section>
+
+    <!-- ============ SETTINGS ============ -->
+    <section class="g-sec" id="settings">
+      <h2><span class="g-num">3</span> Output settings</h2>
+
+      <h3>Aspect ratio</h3>
+      <p><strong>16:9</strong> landscape (standard video), <strong>9:16</strong> tall (Shorts / Reels / TikTok), or
+        <strong>1:1</strong> square. This sets the true shape of the generated frame.</p>
+
+      <h3>Resolution — 1K / 2K / 4K</h3>
+      <p>These are real quality tiers, not hints. Each step roughly doubles the pixels on every side (so ~4× the total pixels):
+        a 16:9 image is about <strong>1376×768</strong> at 1K, <strong>2752×1536</strong> at 2K, and
+        <strong>5504×3072</strong> at 4K. <strong>Hover a resolution</strong> to see the exact dimensions and megapixels for
+        the current aspect ratio. Higher tiers look sharper but cost more and take longer.</p>
+
+      <h3>Images (batch)</h3>
+      <p>Generate <strong>1–4 variations</strong> in one run. They're produced in parallel and all saved to the library, so
+        you can pick the best.</p>
+
+      <h3>Seed</h3>
+      <p>Leave the seed <strong>blank for a random</strong> result each time. Set a number to make a look
+        <strong>reproducible</strong> — the same seed + same prompt + same settings gives the same image. Every card shows the
+        seed it used; click it to reuse it. Batches vary the seed per image so the variations differ.</p>
+
+      <h3>Keying-safe</h3>
+      <p>When <strong>Keying-safe</strong> is on, the prompt steers the scene <em>away from</em> pure chroma green and blue, so
+        the finished background won't collide with your key colour and vanish when you composite. Turn it on for green-screen
+        work; turn it off if you actually want green/blue in the scene. It's a steer, not a guarantee — glance at the result.</p>
+    </section>
+
+    <!-- ============ GENERATING ============ -->
+    <section class="g-sec" id="generating">
+      <h2><span class="g-num">4</span> Generating</h2>
+      <p>Press <span class="pill-ref">✦ Generate</span>. While it runs, a full-screen "Generating" overlay shows progress
+        (e.g. <em>Generating 2 / 4</em> for a batch). New results appear at the top of the library, newest first, each with its
+        prompt, settings, seed, and cost.</p>
+      <p>The header <strong>balance</strong> updates right after a run. It reconciles against OpenRouter a few seconds later,
+        so a brief settling of the number is normal.</p>
+      <div class="g-callout">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        <p>Describe, Preview and Generate can't overlap — kick one off and the others wait, so you never fire a duplicate
+          (billed) request by accident.</p>
+      </div>
+    </section>
+
+    <!-- ============ EDITING ============ -->
+    <section class="g-sec" id="editing">
+      <h2><span class="g-num">5</span> Editing an image</h2>
+      <p>Every result can be edited without starting from scratch. Editing always produces a <strong>new</strong> image (the
+        original is untouched) and links back to its parent.</p>
+
+      <h3>Adjust with a new prompt</h3>
+      <p>Load an image as the <strong>base</strong> in one of two ways: click a card's <span class="pill-ref">Adjust</span>
+        button, or <strong>drag the card onto the base slot</strong> at the top (a floating drop bar makes the target obvious).
+        Type what to change, then hit <span class="pill-ref">Adjust</span>. To go back to a fresh generation, clear the base
+        slot.</p>
+
+      <h3>Add objects</h3>
+      <p>In Adjust mode, upload a product or prop photo into the reference area and describe where it goes
+        ("place this on the desk, matching the lighting"). The model composites it into the scene.</p>
+
+      <h3>Region editor — Add / Replace / Remove</h3>
+      <p>For a targeted change, click <span class="pill-ref">✂ Mark region</span>, choose a mode, and draw a box on the image:</p>
+      <ul>
+        <li><strong>Add</strong> — put something new in the box (type what, or use an uploaded object photo).</li>
+        <li><strong>Replace</strong> — swap whatever's in the box for something else.</li>
+        <li><strong>Remove</strong> — erase what's in the box and fill it seamlessly with the surrounding background.</li>
+      </ul>
+      <p>The app builds a mask and a positional hint so the edit stays confined to the region while the rest of the scene is
+        preserved. The chip shows your active region; <em>Edit region</em> lets you redraw it.</p>
+
+      <h3>Reframe / outpaint</h3>
+      <p>Need the same scene in a different shape? <strong>Reframe</strong> extends (out-paints) a background into a new aspect
+        ratio — e.g. turn a 16:9 shot into 9:16 for Shorts — continuing the scene naturally instead of cropping or regenerating.</p>
+
+      <h3>Upscale</h3>
+      <p><strong>Upscale</strong> re-renders an image at a higher tier (2K / 4K) with enhanced detail. It works on a
+        <strong>library image</strong> (the <span class="pill-ref">Upscale</span> action) <em>or</em> on
+        <strong>any file from your computer</strong> (<span class="pill-ref">Upscale a file</span> in the library header) — and
+        the result is saved to your library either way. Reach for this when you generated small and later need a bigger file, or
+        before exporting at a size larger than the source.</p>
+      <div class="g-callout warn">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        <p>Upscale is a generative re-render, not a lossless enlargement — it reinterprets fine detail, so check the result.
+          Like all edits, it's billed as a new generation.</p>
+      </div>
+    </section>
+
+    <!-- ============ REVIEWING ============ -->
+    <section class="g-sec" id="reviewing">
+      <h2><span class="g-num">6</span> Reviewing your shot</h2>
+      <p>Click any image to open it full-size. The lightbox has three review tools (one at a time):</p>
+
+      <h3>Keying preview — see yourself in the shot</h3>
+      <p>The big one. Open <strong>Keying preview</strong>, upload a <strong>green-screen frame of yourself</strong>, and the
+        app chroma-keys it in the browser and composites it over the background — a live preview of the real composite, with
+        <strong>no API cost</strong>. You can:</p>
+      <ul>
+        <li>Pick your key colour (<strong>green</strong> or <strong>blue</strong>).</li>
+        <li>Tune the <strong>key</strong> threshold and <strong>edge</strong> softness until the fringe is clean.</li>
+        <li><strong>Drag</strong> to position, <strong>scale</strong>, and <strong>flip</strong> yourself.</li>
+        <li><strong>Save the composite</strong> as a PNG.</li>
+      </ul>
+      <p>It's the fastest way to confirm a background actually leaves room for you before you commit to it.</p>
+
+      <h3>Before / after compare</h3>
+      <p>On an edited image, <strong>Compare</strong> shows a draggable divider between the edit and the version it came from —
+        so you can see exactly what changed.</p>
+
+      <h3>Subject placement guide</h3>
+      <p>Drop a draggable, resizable <strong>silhouette</strong> (with a rule-of-thirds grid) onto a background to check the
+        negative space fits your keyed subject — handy when you're planning composition before shooting.</p>
+    </section>
+
+    <!-- ============ EXPORTING ============ -->
+    <section class="g-sec" id="exporting">
+      <h2><span class="g-num">7</span> Exporting</h2>
+      <p>Click <span class="pill-ref">Download</span> on a card and choose a size:</p>
+      <ul>
+        <li><strong>Original</strong> — the file exactly as generated.</li>
+        <li><strong>1080p</strong> — 1920×1080.</li>
+        <li><strong>4K UHD</strong> — 3840×2160.</li>
+      </ul>
+      <p>The presets export to those <strong>exact broadcast dimensions</strong> (cover-cropped to fit the target perfectly), so
+        the file drops straight onto a 1080p or 4K timeline. A preset that's <strong>larger than the source</strong> is
+        <strong>disabled</strong> — a <span class="pill-ref">?</span> next to it explains you'd need to <em>Upscale</em> first,
+        since blowing a small image up on export would just soften it.</p>
+    </section>
+
+    <!-- ============ LIBRARY ============ -->
+    <section class="g-sec" id="library">
+      <h2><span class="g-num">8</span> The library</h2>
+      <p>Everything you generate or edit is saved <strong>locally</strong> and listed newest-first. From here you can:</p>
+      <ul>
+        <li><strong>Search</strong> by prompt text.</li>
+        <li><strong>Favourite</strong> ⭐ the keepers and filter to just those.</li>
+        <li><strong>Sort</strong> by newest, oldest, or cost; page through results (your position persists across refreshes).</li>
+        <li>Read each image's <strong>metadata</strong> — aspect ratio · tier · dimensions · megapixels · cost · seed.</li>
+        <li><strong>Copy the prompt</strong> that made it, <strong>Download</strong>, or <strong>Delete</strong> it.</li>
+      </ul>
+      <p>Thumbnails are shown at a uniform size for a tidy grid; click one to see the full picture at its true dimensions.</p>
+    </section>
+
+    <!-- ============ TIPS ============ -->
+    <section class="g-sec" id="tips">
+      <h2><span class="g-num">9</span> Tips &amp; good to know</h2>
+      <div class="g-card">
+        <h3>Get clean keys</h3>
+        <p>Turn <strong>Keying-safe</strong> on for anything you'll composite, then use the <strong>Keying preview</strong> to
+          verify the edges before you export. Backgrounds with strong depth and clear negative space where you'll stand key best.</p>
+      </div>
+      <div class="g-card">
+        <h3>Reproducibility &amp; iteration</h3>
+        <p>When you land a look you like, note its <strong>seed</strong> (click it to reuse) — then change one thing at a time to
+          iterate deliberately instead of rerolling everything.</p>
+      </div>
+      <div class="g-card">
+        <h3>Sizing &amp; the "≈"</h3>
+        <p>For the three measured ratios (16:9, 9:16, 1:1) the dimension labels are exact. For reframe/upload ratios (like 4:5 or
+          21:9) you'll see an <strong>≈</strong> — those sizes are close estimates. Export presets always land on exact
+          broadcast dimensions regardless.</p>
+      </div>
+      <div class="g-callout warn">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        <p><strong>SynthID watermark &amp; cost.</strong> Every generated image carries an invisible SynthID watermark marking it
+          as AI-made — this is permanent and doesn't block commercial use. Generation and every edit are billed per image; keep
+          credit on your OpenRouter account and watch the header balance.</p>
+      </div>
+    </section>
+
+    <!-- ============ SHORTCUTS ============ -->
+    <section class="g-sec" id="shortcuts">
+      <h2><span class="g-num">10</span> Shortcuts &amp; interactions</h2>
+      <ul>
+        <li><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Enter</kbd> in the prompt box — <strong>Generate</strong>.</li>
+        <li><strong>Drag a library card</strong> onto the base slot to adjust it; drop onto the reference area to use it as a
+          reference.</li>
+        <li>In the region editor and keying preview, <strong>drag</strong> to position and the on-screen controls to scale/flip.</li>
+      </ul>
+      <div class="g-callout">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        <p>This guide covers the current release. When features change, it's kept up to date alongside the app.</p>
+      </div>
+    </section>
+
+    <div class="g-foot">
+      Background Studio · User Guide · v1.0.1 &nbsp;·&nbsp; <a href="index.html">Back to the app</a><br />
+      Images by Nano Banana Pro (Gemini 3 Pro Image) via OpenRouter. Runs locally on your machine.
+    </div>
+  </main>
+</div>
+
+<script>
+  // Highlight the current section in the table of contents while scrolling.
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('#toc a'));
+    var byId = {};
+    links.forEach(function (a) { byId[a.getAttribute('href').slice(1)] = a; });
+    var sections = links
+      .map(function (a) { return document.getElementById(a.getAttribute('href').slice(1)); })
+      .filter(Boolean);
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          links.forEach(function (l) { l.classList.remove('active'); });
+          var link = byId[e.target.id];
+          if (link) link.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-40% 0px -55% 0px', threshold: 0 });
+    sections.forEach(function (s) { obs.observe(s); });
+  })();
+</script>
+
+</body>
+</html>

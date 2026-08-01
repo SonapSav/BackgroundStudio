@@ -516,6 +516,16 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 .metavalue .cost { color: var(--accent); font-family: var(--sans); font-variant-numeric: tabular-nums; font-weight: 700; }
 .metahint { font-size: 11px; font-weight: 400; color: var(--faint); font-family: var(--sans); }
 .metadiv { width: 1px; background: var(--border); align-self: stretch; flex: none; }
+/* Right-aligned "User Guide" link inside the meta row; opens the manual in a new tab. */
+.metaguide {
+  margin-left: auto; align-self: stretch; flex: none;
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 0 16px; border-left: 1px solid var(--border);
+  font-size: 12.5px; font-weight: 650; color: var(--muted);
+  text-decoration: none; transition: background .15s, color .15s;
+}
+.metaguide svg { color: var(--accent); flex: none; }
+.metaguide:hover { background: var(--surface-3); color: var(--text); }
 
 /* --- Collapsible pill section (BRANDING.md §6) ---------------------------- */
 .sec {
