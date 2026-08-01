@@ -33,7 +33,12 @@ async function readIndex() {
 
 async function writeIndex(records) {
   await ensureDirs();
-  await fs.writeFile(INDEX_FILE, JSON.stringify(records, null, 2), "utf8");
+  // Write to a temp file then rename — rename is atomic on the same volume, so a
+  // concurrent reader (list/get, which run outside the lock) never sees a
+  // half-written / truncated library.json.
+  const tmp = `${INDEX_FILE}.${crypto.randomUUID()}.tmp`;
+  await fs.writeFile(tmp, JSON.stringify(records, null, 2), "utf8");
+  await fs.rename(tmp, INDEX_FILE);
 }
 
 // Newest first.
@@ -106,7 +111,8 @@ export async function add(meta, bytes, mediaType = "image/png") {
   const id = crypto.randomUUID();
   const ext = EXT_BY_TYPE[mediaType] || "png";
   const file = `${id}.${ext}`;
-  await fs.writeFile(path.join(IMAGES_DIR, file), bytes);
+  const filePath = path.join(IMAGES_DIR, file);
+  await fs.writeFile(filePath, bytes);
 
   const dims = imageSize(bytes) || {};
   const record = {
@@ -118,11 +124,17 @@ export async function add(meta, bytes, mediaType = "image/png") {
     height: dims.height ?? null,
   };
 
-  await withIndexLock(async () => {
-    const records = await readIndex();
-    records.push(record);
-    await writeIndex(records);
-  });
+  try {
+    await withIndexLock(async () => {
+      const records = await readIndex();
+      records.push(record);
+      await writeIndex(records);
+    });
+  } catch (err) {
+    // Index write failed — don't leave an orphaned image file on disk.
+    await fs.unlink(filePath).catch(() => {});
+    throw err;
+  }
   return record;
 }
 
@@ -167,10 +179,16 @@ export async function remove(id) {
   });
   if (!record) return false;
 
+  // The index entry is already gone (the durable source of truth), so the delete
+  // has logically succeeded. Removing the file is best-effort: an ENOENT means it
+  // was already gone, and any other error just leaves a harmless orphan rather
+  // than failing the request after the record has been removed.
   try {
     await fs.unlink(path.join(IMAGES_DIR, record.file));
   } catch (err) {
-    if (err.code !== "ENOENT") throw err; // already gone is fine
+    if (err.code !== "ENOENT") {
+      console.warn(`[library] could not delete image file ${record.file}: ${err.message}`);
+    }
   }
   return true;
 }

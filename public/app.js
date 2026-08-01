@@ -145,12 +145,24 @@ const COUNTS = ["1", "2", "3", "4"];
 // Measured 1K output per aspect ratio; 2K = ×2, 4K = ×4 on each side.
 const BASE_1K = { "16:9": [1376, 768], "9:16": [768, 1376], "1:1": [1024, 1024] };
 const RES_MULT = { "1K": 1, "2K": 2, "4K": 4 };
+const ASPECT_VAL = Object.fromEntries(ASPECT_RATIOS); // "16:9" -> 1.777…
+// 1K base dims for a ratio: use the measured values where we have them, else
+// estimate a ~1.05 MP frame (matching the measured bases) rounded to /16 like the
+// model's tiling — so reframe (4:5) and upscale-a-file (4:3/3:4/21:9…) still label.
+function base1kFor(aspectRatio) {
+  if (BASE_1K[aspectRatio]) return BASE_1K[aspectRatio];
+  const r = ASPECT_VAL[aspectRatio];
+  if (!r) return null;
+  const TARGET = 1_050_000;
+  return [Math.round(Math.sqrt(TARGET * r) / 16) * 16, Math.round(Math.sqrt(TARGET / r) / 16) * 16];
+}
 function dimsFor(resolution, aspectRatio) {
-  const base = BASE_1K[aspectRatio], m = RES_MULT[resolution];
+  const base = base1kFor(aspectRatio), m = RES_MULT[resolution];
   if (!base || !m) return "";
   const w = base[0] * m, h = base[1] * m;
   const mp = (w * h) / 1e6;
-  return `${w}×${h} · ${mp.toFixed(1)} MP`;
+  const approx = BASE_1K[aspectRatio] ? "" : "≈ ";
+  return `${approx}${w}×${h} · ${mp.toFixed(1)} MP`;
 }
 // Rough per-image estimates (USD), from observed /images pricing. Actual cost is returned per image.
 const EST_COST = { "1K": 0.13, "2K": 0.14, "4K": 0.24 };
@@ -537,8 +549,11 @@ async function enhancePromptClient(source) {
 }
 // Describe an uploaded image into a reusable prompt (drops it into the prompt box).
 function describeFromFile(file) {
+  if (state.busy) return;
   const reader = new FileReader();
   reader.onload = async () => {
+    if (state.busy) return;
+    state.busy = true;
     el.describeBtn.disabled = true; el.previewBtn.disabled = true; el.goBtn.disabled = true;
     el.genTitle.textContent = "Describing image"; el.genOverlay.hidden = false;
     try {
@@ -549,17 +564,19 @@ function describeFromFile(file) {
       state.enhancedFrom = null; el.enhancedOut.value = ""; // fresh prompt → reset any enhancement
       toast("Described — tweak it or hit Generate for variations.");
     } catch (e) { toast(e.message, true); }
-    finally { el.describeBtn.disabled = false; el.previewBtn.disabled = false; el.goBtn.disabled = false; el.genOverlay.hidden = true; }
+    finally { state.busy = false; el.describeBtn.disabled = false; el.previewBtn.disabled = false; el.goBtn.disabled = false; el.genOverlay.hidden = true; }
   };
   reader.onerror = () => toast("Couldn't read that image.", true);
   reader.readAsDataURL(file);
 }
 function renderEnhanceField() { el.enhancedField.hidden = !el.enhanceToggle.checked; }
 async function preview() {
+  if (state.busy) return;
   const p = composeFinalPrompt();
   if (!p) { toast("Pick some pills or type a prompt first.", true); return; }
   el.promptOut.value = p; // reflect the merged brief
   if (el.enhanceToggle.checked) {
+    state.busy = true;
     el.previewBtn.disabled = true; el.goBtn.disabled = true;
     el.genTitle.textContent = "Enhancing prompt"; el.genOverlay.hidden = false;
     try {
@@ -567,7 +584,7 @@ async function preview() {
       el.enhancedOut.value = enhanced; state.enhancedFrom = p; renderEnhanceField();
       toast("Prompt enhanced — edit the enhanced version freely before generating.");
     } catch (e) { toast(e.message, true); }
-    finally { el.previewBtn.disabled = false; el.goBtn.disabled = false; el.genOverlay.hidden = true; }
+    finally { state.busy = false; el.previewBtn.disabled = false; el.goBtn.disabled = false; el.genOverlay.hidden = true; }
     return;
   }
   toast("Prompt assembled — pills + your text combined. Edit freely before generating.");
@@ -657,6 +674,7 @@ function setBusy(b, done = 0, total = 0) {
   state.busy = b;
   el.goBtn.disabled = b;
   el.previewBtn.disabled = b;
+  el.describeBtn.disabled = b;
   el.goLabel.textContent = b ? "Working…" : (state.mode === "adjust" ? "Adjust" : "Generate");
   if (b) {
     const base = state.mode === "adjust" ? "Adjusting" : "Generating";
@@ -1034,7 +1052,7 @@ function applyRegion() {
   state.region = { mode: reg.mode, bbox, positionLabel, maskDataUri: makeMaskDataUri(reg.natW, reg.natH, bbox) };
   closeRegionEditor();
   renderRegionUI();
-  toast(`Region set: ${reg.mode === "add" ? "add" : "remove"} · ${positionLabel}.`);
+  toast(`Region set: ${({ add: "add", replace: "replace", remove: "remove" }[reg.mode] || reg.mode)} · ${positionLabel}.`);
 }
 function clearRegion() { state.region = null; renderRegionUI(); }
 function renderRegionUI() {
@@ -1280,6 +1298,7 @@ function openLightbox(record) {
   cmp.on = false;
   el.compareToggle.hidden = !cmp.parentFile;
   renderCompare();
+  guide.on = false; // clean slate on open, matching compare/keying
   el.subjSize.value = String(guide.h);
   renderGuide();
   key.on = false;
@@ -1305,7 +1324,7 @@ async function loadConfig() {
       state.resolution = cfg.defaults.resolution || state.resolution;
       state.keyingSafe = cfg.defaults.keyingSafe ?? state.keyingSafe;
     }
-    if (cfg.model) el && ($("modelName").textContent = "Nano Banana Pro");
+    $("modelName").textContent = "Nano Banana Pro";
     el.keyPill.className = "pill " + (cfg.hasKey ? "ok" : "bad");
     el.keyPill.innerHTML = cfg.hasKey ? `${icon("check", 13)} API key` : "no API key";
     if (!cfg.hasKey) toast("No OpenRouter key found — add OPENROUTER_API_KEY to .env and restart.", true);

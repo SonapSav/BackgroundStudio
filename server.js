@@ -53,6 +53,65 @@ function buildEditInstruction({ userPrompt, region, hasMask, hasObjects }) {
   return parts.filter(Boolean).join(" ");
 }
 
+const REGION_MODES = ["add", "remove", "replace"];
+
+// A stored file's ext -> a *valid* MIME type. Note "jpg" -> "image/jpeg"
+// ("image/jpg" is not a real MIME type and can trip up the model).
+const MIME_BY_EXT = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp" };
+function fileDataUri(file, bytes) {
+  const ext = (file.split(".").pop() || "").toLowerCase();
+  const mime = MIME_BY_EXT[ext] || "image/png";
+  return `data:${mime};base64,${bytes.toString("base64")}`;
+}
+
+// Read a source image's bytes and build its data URI, turning a missing-on-disk
+// file into a clear 410 instead of a raw ENOENT 500.
+async function loadSourceUri(source) {
+  let bytes;
+  try {
+    bytes = await library.readImageBytes(source);
+  } catch (err) {
+    if (err.code === "ENOENT") {
+      const e = new Error("The source image file is missing from disk.");
+      e.status = 410;
+      e.code = "SOURCE_MISSING";
+      throw e;
+    }
+    throw err;
+  }
+  return fileDataUri(source.file, bytes);
+}
+
+const badRequest = (msg) => Object.assign(new Error(msg), { status: 400, code: "BAD_INPUT" });
+
+// Validate a caller-supplied list of image data URIs (references / objects).
+function cleanImageList(list, field) {
+  if (list === undefined || list === null) return [];
+  if (!Array.isArray(list)) throw badRequest(`${field} must be an array of image data URIs.`);
+  for (const u of list) {
+    if (typeof u !== "string" || !u.startsWith("data:")) {
+      throw badRequest(`${field} must contain image data URIs.`);
+    }
+  }
+  return list;
+}
+
+// Validate a single optional image data URI (mask / uploaded image).
+function cleanImage(value, field) {
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value !== "string" || !value.startsWith("data:")) {
+    throw badRequest(`${field} must be an image data URI.`);
+  }
+  return value;
+}
+
+// Accept a number or numeric string ("123"); anything else -> undefined (random).
+function parseSeed(seed) {
+  if (seed === undefined || seed === null || seed === "") return undefined;
+  const n = Number(seed);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 const app = express();
 app.use(express.json({ limit: "25mb" })); // base64 image uploads
 
@@ -122,12 +181,13 @@ app.post("/api/generate", async (req, res, next) => {
   try {
     const {
       prompt,
-      referenceImages = [],
       aspectRatio = DEFAULTS.aspectRatio,
       resolution = DEFAULTS.resolution,
       keyingSafe = DEFAULTS.keyingSafe,
       seed,
     } = req.body || {};
+    const referenceImages = cleanImageList(req.body?.referenceImages, "referenceImages");
+    const seedNum = parseSeed(seed);
 
     const result = await generateImage({
       prompt,
@@ -135,14 +195,14 @@ app.post("/api/generate", async (req, res, next) => {
       aspectRatio,
       resolution,
       keyingSafe,
-      seed,
+      seed: seedNum,
     });
 
     const record = await library.add(
       {
         kind: "generate",
         prompt,
-        seed: Number.isFinite(seed) ? seed : null,
+        seed: seedNum ?? null,
         parentId: null,
         aspectRatio,
         resolution,
@@ -167,25 +227,28 @@ app.post("/api/adjust", async (req, res, next) => {
     const {
       sourceId,
       prompt,
-      extraImages = [],
-      mask = null,
       region = null,
       aspectRatio = DEFAULTS.aspectRatio,
       resolution = DEFAULTS.resolution,
       keyingSafe = DEFAULTS.keyingSafe,
       seed,
     } = req.body || {};
+    const extraImages = cleanImageList(req.body?.extraImages, "extraImages");
+    const mask = cleanImage(req.body?.mask, "mask");
+    const seedNum = parseSeed(seed);
+    // Only honour a region with a recognised mode; otherwise fall back to the
+    // plain prompt (a bogus region would otherwise bill a low-value generation).
+    const validRegion = region && REGION_MODES.includes(region.mode) ? region : null;
 
     const source = await library.get(sourceId);
     if (!source) return res.status(404).json({ error: "Source image not found." });
 
-    const sourceBytes = await library.readImageBytes(source);
-    const sourceDataUri = `data:image/${source.file.split(".").pop()};base64,${sourceBytes.toString("base64")}`;
+    const sourceDataUri = await loadSourceUri(source);
 
     // base image first, then the mask (if any), then object photos to add
     const images = [sourceDataUri, ...(mask ? [mask] : []), ...extraImages];
-    const instruction = region
-      ? buildEditInstruction({ userPrompt: prompt, region, hasMask: Boolean(mask), hasObjects: extraImages.length > 0 })
+    const instruction = validRegion
+      ? buildEditInstruction({ userPrompt: prompt, region: validRegion, hasMask: Boolean(mask), hasObjects: extraImages.length > 0 })
       : prompt;
 
     const result = await generateImage({
@@ -194,14 +257,14 @@ app.post("/api/adjust", async (req, res, next) => {
       aspectRatio,
       resolution,
       keyingSafe,
-      seed,
+      seed: seedNum,
     });
 
     const record = await library.add(
       {
         kind: "adjust",
         prompt: instruction,
-        seed: Number.isFinite(seed) ? seed : null,
+        seed: seedNum ?? null,
         parentId: sourceId,
         aspectRatio,
         resolution,
@@ -209,7 +272,7 @@ app.post("/api/adjust", async (req, res, next) => {
         cost: result.cost,
         model: MODEL,
         extraImageCount: extraImages.length,
-        edit: region ? { mode: region.mode, position: region.positionLabel || null } : null,
+        edit: validRegion ? { mode: validRegion.mode, position: validRegion.positionLabel || null } : null,
       },
       result.bytes,
       result.mediaType
@@ -231,13 +294,13 @@ app.post("/api/reframe", async (req, res, next) => {
       keyingSafe = DEFAULTS.keyingSafe,
       seed,
     } = req.body || {};
+    const seedNum = parseSeed(seed);
 
     const source = await library.get(sourceId);
     if (!source) return res.status(404).json({ error: "Source image not found." });
     if (!targetAspect) return res.status(400).json({ error: "A target aspect ratio is required." });
 
-    const bytes = await library.readImageBytes(source);
-    const uri = `data:image/${source.file.split(".").pop()};base64,${bytes.toString("base64")}`;
+    const uri = await loadSourceUri(source);
     const instruction = buildReframeInstruction(targetAspect);
 
     const result = await generateImage({
@@ -246,14 +309,14 @@ app.post("/api/reframe", async (req, res, next) => {
       aspectRatio: targetAspect,
       resolution,
       keyingSafe,
-      seed,
+      seed: seedNum,
     });
 
     const record = await library.add(
       {
         kind: "reframe",
         prompt: instruction,
-        seed: Number.isFinite(seed) ? seed : null,
+        seed: seedNum ?? null,
         parentId: sourceId,
         aspectRatio: targetAspect,
         resolution,
@@ -277,17 +340,17 @@ app.post("/api/reframe", async (req, res, next) => {
 app.post("/api/upscale", async (req, res, next) => {
   try {
     const { sourceId, image, aspectRatio, targetResolution = "4K", seed } = req.body || {};
+    const seedNum = parseSeed(seed);
 
     let uri, aspect, parentId = null;
     if (sourceId) {
       const source = await library.get(sourceId);
       if (!source) return res.status(404).json({ error: "Source image not found." });
-      const bytes = await library.readImageBytes(source);
-      uri = `data:image/${source.file.split(".").pop()};base64,${bytes.toString("base64")}`;
+      uri = await loadSourceUri(source);
       aspect = source.aspectRatio || aspectRatio;
       parentId = sourceId;
     } else if (image) {
-      uri = image;
+      uri = cleanImage(image, "image");
       aspect = aspectRatio;
     } else {
       return res.status(400).json({ error: "Provide a library sourceId or an uploaded image." });
@@ -300,14 +363,14 @@ app.post("/api/upscale", async (req, res, next) => {
       aspectRatio: aspect,
       resolution: targetResolution,
       keyingSafe: false, // preserve the image exactly; don't steer colours
-      seed,
+      seed: seedNum,
     });
 
     const record = await library.add(
       {
         kind: "upscale",
         prompt: instruction,
-        seed: Number.isFinite(seed) ? seed : null,
+        seed: seedNum ?? null,
         parentId,
         aspectRatio: aspect,
         resolution: targetResolution,
@@ -355,8 +418,17 @@ app.use(express.static(path.join(__dirname, "public")));
 // --- Error handler ---------------------------------------------------------
 
 app.use((err, _req, res, _next) => {
+  // Body-parser failures: return a clean message instead of leaking parser internals.
+  if (err.type === "entity.parse.failed") {
+    return res.status(400).json({ error: "Malformed JSON body.", code: "BAD_JSON" });
+  }
+  if (err.type === "entity.too.large") {
+    return res.status(413).json({ error: "Upload too large (max 25 MB).", code: "TOO_LARGE" });
+  }
   const status =
-    err.code === "NO_API_KEY" || err.code === "NO_PROMPT" ? 400 : err.status || 500;
+    err.code === "NO_API_KEY" || err.code === "NO_PROMPT" || err.code === "BAD_INPUT"
+      ? 400
+      : err.status || 500;
   console.error(`[error] ${err.code || "UNKNOWN"}: ${err.message}`);
   res.status(status).json({ error: err.message, code: err.code || "UNKNOWN" });
 });
