@@ -396,6 +396,17 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 }
 .exportmenu .help .help-pop strong { color: var(--accent-2); }
 .exportmenu .help:hover .help-pop { display: block; }
+/* Format toggle — segmented JPEG / PNG / WebP (export menu + filter panel) */
+.exp-fmt { display: flex; gap: 4px; padding: 2px 4px 6px; }
+.fmt-toggle { display: inline-flex; gap: 4px; }
+.exportmenu .exp-fmt button { width: auto; flex: 1; justify-content: center; padding: 4px 6px; }
+.exp-fmt button, .fmt-toggle button {
+  font: inherit; font-size: 11px; font-weight: 650; color: var(--muted);
+  background: var(--surface-3); border: 1px solid var(--border); border-radius: 999px;
+  padding: 4px 10px; cursor: pointer; transition: background .12s, color .12s, border-color .12s;
+}
+.exp-fmt button:hover, .fmt-toggle button:hover { color: var(--text); border-color: var(--border-strong); }
+.exp-fmt button.active, .fmt-toggle button.active { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
 
 /* --- Reframe modal -------------------------------------------------------- */
 .reframe {

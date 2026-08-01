@@ -234,7 +234,7 @@ const el = {
   upscaleCancel: $("upscaleCancel"), upscaleGo: $("upscaleGo"),
   upscaleFileBtn: $("upscaleFileBtn"), upscaleFileInput: $("upscaleFileInput"),
   exportMenu: $("exportMenu"), expOrigDim: $("expOrigDim"), exp1080Dim: $("exp1080Dim"), expUhdDim: $("expUhdDim"),
-  exp1080Help: $("exp1080Help"), expUhdHelp: $("expUhdHelp"),
+  exp1080Help: $("exp1080Help"), expUhdHelp: $("expUhdHelp"), exportFmt: $("exportFmt"), filterFmt: $("filterFmt"),
   dropBar: $("dragDropBar"), dropOptAdjust: $("dropOptAdjust"), dropOptRef: $("dropOptRef"),
   genOverlay: $("genOverlay"), genTitle: $("genTitle"),
   regionRow: $("regionRow"), markRegionBtn: $("markRegionBtn"), regionChip: $("regionChip"),
@@ -1109,6 +1109,44 @@ const STD_SIZES = {
   "3:4": { p1080: [1080, 1440], uhd: [2160, 2880] },
   "21:9": { p1080: [2560, 1080], uhd: [5120, 2160] },
 };
+// Export file format (applies to the resized presets + the filter Download; Original stays pass-through).
+const EXPORT_FORMATS = {
+  jpeg: { mime: "image/jpeg", ext: "jpg", q: 0.95 },
+  png: { mime: "image/png", ext: "png", q: undefined },
+  webp: { mime: "image/webp", ext: "webp", q: 0.95 },
+};
+let _webpOK = null;
+function webpSupported() {
+  if (_webpOK === null) {
+    try { const c = document.createElement("canvas"); c.width = c.height = 1; _webpOK = c.toDataURL("image/webp").startsWith("data:image/webp"); }
+    catch { _webpOK = false; }
+  }
+  return _webpOK;
+}
+function getExportFormat() {
+  let f = prefGet("bgstudio.exportFmt") || "jpeg";
+  if (!EXPORT_FORMATS[f] || (f === "webp" && !webpSupported())) f = "jpeg";
+  return f;
+}
+function setExportFormat(f) { if (EXPORT_FORMATS[f]) { prefSet("bgstudio.exportFmt", f); renderFormatToggles(); } }
+function renderFormatToggles() {
+  const cur = getExportFormat();
+  [el.exportFmt, el.filterFmt].forEach((grp) => {
+    if (!grp) return;
+    grp.querySelectorAll("button").forEach((b) => {
+      b.hidden = b.dataset.fmt === "webp" && !webpSupported();
+      b.classList.toggle("active", b.dataset.fmt === cur);
+    });
+  });
+}
+// Download a canvas in the chosen format.
+function exportCanvas(canvas, baseName) {
+  const f = EXPORT_FORMATS[getExportFormat()];
+  const a = document.createElement("a");
+  a.href = canvas.toDataURL(f.mime, f.q);
+  a.download = `${baseName}.${f.ext}`;
+  a.click();
+}
 function exportDims(record, tier) {
   const std = STD_SIZES[record.aspectRatio];
   if (std) { const [w, h] = tier === "uhd" ? std.uhd : std.p1080; return { w, h }; }
@@ -1136,6 +1174,7 @@ function openExportMenu(record, btn) {
   el.expOrigDim.textContent = record.width && record.height ? `${record.width}×${record.height}` : "";
   setExportOption("1080", exportDims(record, "1080"), record);
   setExportOption("uhd", exportDims(record, "uhd"), record);
+  renderFormatToggles();
   el.exportMenu.hidden = false;
   const r = btn.getBoundingClientRect(), m = el.exportMenu.getBoundingClientRect();
   let top = r.bottom + 6, left = r.left;
@@ -1159,10 +1198,7 @@ function exportResized(record, tier) {
     let dw, dh;
     if (sAR > tAR) { dh = d.h; dw = Math.round(d.h * sAR); } else { dw = d.w; dh = Math.round(d.w / sAR); }
     ctx.drawImage(img, Math.round((d.w - dw) / 2), Math.round((d.h - dh) / 2), dw, dh);
-    const a = document.createElement("a");
-    a.href = c.toDataURL("image/jpeg", 0.95);
-    a.download = `background-${d.w}x${d.h}.jpg`;
-    a.click();
+    exportCanvas(c, `background-${d.w}x${d.h}`);
   };
   img.onerror = () => toast("Couldn't load the image for export.", true);
   img.src = `/library/${record.file}`;
@@ -1450,10 +1486,7 @@ function downloadFiltered() {
     const c = document.createElement("canvas");
     c.width = img.naturalWidth; c.height = img.naturalHeight;
     paintGrade(c.getContext("2d"), img, c.width, c.height); // same pipeline, full resolution
-    const a = document.createElement("a");
-    a.href = c.toDataURL("image/jpeg", 0.95);
-    a.download = `background-filtered-${c.width}x${c.height}.jpg`;
-    a.click();
+    exportCanvas(c, `background-filtered-${c.width}x${c.height}`);
   };
   img.onerror = () => toast("Couldn't load the image for export.", true);
   img.src = `/library/${lbRecord.file}`;
@@ -1742,6 +1775,8 @@ function init() {
   el.filterDownload.onclick = downloadFiltered;
   $("filterSaveIcon").innerHTML = icon("library", 13);
   el.filterSave.onclick = saveFiltered;
+  [el.exportFmt, el.filterFmt].forEach((grp) => grp && grp.querySelectorAll("button").forEach((b) => (b.onclick = () => setExportFormat(b.dataset.fmt))));
+  renderFormatToggles();
 
   // Subject placement guide
   el.lbSubject.innerHTML = SUBJECT_SVG;
