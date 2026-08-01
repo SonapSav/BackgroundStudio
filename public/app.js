@@ -22,6 +22,7 @@ const ICONS = {
   frame: `<line x1="22" x2="2" y1="6" y2="6"/><line x1="22" x2="2" y1="18" y2="18"/><line x1="6" x2="6" y1="2" y2="22"/><line x1="18" x2="18" y1="2" y2="22"/>`,
   expand: `<polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/>`,
   upload: `<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>`,
+  video: `<path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/>`,
 };
 const REFRAME_ASPECTS = ["16:9", "9:16", "1:1", "4:5"];
 // Supported output ratios; an arbitrary upload snaps to the nearest.
@@ -199,6 +200,10 @@ const el = {
   subjFlip: $("subjFlip"), gridToggle: $("gridToggle"),
   compareToggle: $("compareToggle"), lbBefore: $("lbBefore"), lbDivider: $("lbDivider"),
   lbTagBefore: $("lbTagBefore"), lbTagAfter: $("lbTagAfter"),
+  keyToggle: $("keyToggle"), lbKeyCanvas: $("lbKeyCanvas"), lbKeyCtrls: $("lbKeyCtrls"),
+  keyUploadBtn: $("keyUploadBtn"), keyUploadLabel: $("keyUploadLabel"), keySubjectInput: $("keySubjectInput"),
+  keyColorChips: $("keyColorChips"), keyTol: $("keyTol"), keySoft: $("keySoft"), keyScale: $("keyScale"),
+  keyFlip: $("keyFlip"), keyDownload: $("keyDownload"),
   reframeModal: $("reframeModal"), reframeFrame: $("reframeFrame"), reframeImg: $("reframeImg"),
   reframeAspects: $("reframeAspects"), reframeRes: $("reframeRes"),
   reframeClose: $("reframeClose"), reframeCancel: $("reframeCancel"), reframeGo: $("reframeGo"),
@@ -1040,7 +1045,7 @@ function renderGuide() {
   s.style.height = guide.h + "%";
   s.style.transform = `translateX(-50%)${guide.flip ? " scaleX(-1)" : ""}`;
 }
-function toggleGuide() { guide.on = !guide.on; if (guide.on) { cmp.on = false; renderCompare(); } renderGuide(); }
+function toggleGuide() { guide.on = !guide.on; if (guide.on) { cmp.on = false; renderCompare(); key.on = false; renderKey(); } renderGuide(); }
 function setSubjectPos(pos) { guide.x = pos === "left" ? 28 : pos === "right" ? 72 : 50; renderGuide(); }
 
 /* Before/after compare (only for images that have a parent) */
@@ -1060,9 +1065,89 @@ function renderCompare() {
 function toggleCompare() {
   if (!cmp.parentFile) { toast("No earlier version to compare.", true); return; }
   cmp.on = !cmp.on;
-  if (cmp.on) { guide.on = false; renderGuide(); el.lbBefore.src = `/library/${cmp.parentFile}`; cmp.pos = 50; }
+  if (cmp.on) { guide.on = false; renderGuide(); key.on = false; renderKey(); el.lbBefore.src = `/library/${cmp.parentFile}`; cmp.pos = 50; }
   renderCompare();
 }
+/* ---- Live keying preview (chroma-key your green-screen shot over a background) ---- */
+const key = { on: false, subjectImg: null, keyed: null, color: "green", tol: 90, soft: 40, x: 0.5, y: 0.98, scale: 0.9, flip: false };
+function keyControls() {
+  el.keyTol.value = String(key.tol);
+  el.keySoft.value = String(key.soft);
+  el.keyScale.value = String(Math.round(key.scale * 100));
+  el.keyColorChips.querySelectorAll(".chip").forEach((b) => b.classList.toggle("active", b.dataset.kc === key.color));
+  el.keyFlip.classList.toggle("active", key.flip);
+  el.keyUploadLabel.textContent = key.subjectImg ? "Replace shot" : "Your green‑screen shot";
+}
+function rekey() {
+  if (!key.subjectImg) { key.keyed = null; return; }
+  const cap = 1400, s = Math.min(1, cap / Math.max(key.subjectImg.naturalWidth, key.subjectImg.naturalHeight));
+  const w = Math.round(key.subjectImg.naturalWidth * s), h = Math.round(key.subjectImg.naturalHeight * s);
+  const oc = document.createElement("canvas"); oc.width = w; oc.height = h;
+  const octx = oc.getContext("2d");
+  octx.drawImage(key.subjectImg, 0, 0, w, h);
+  const id = octx.getImageData(0, 0, w, h), d = id.data, tol = key.tol, soft = Math.max(1, key.soft);
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], g = d[i + 1], b = d[i + 2];
+    const m = key.color === "blue" ? b - Math.max(r, g) : g - Math.max(r, b);
+    if (m > tol + soft) d[i + 3] = 0;
+    else if (m > tol) d[i + 3] = Math.round(d[i + 3] * (1 - (m - tol) / soft));
+  }
+  octx.putImageData(id, 0, 0);
+  key.keyed = oc;
+}
+function composeKey() {
+  const c = el.lbKeyCanvas, ctx = c.getContext("2d"), bg = el.lightboxImg;
+  const natW = bg.naturalWidth || 1280, natH = bg.naturalHeight || 720;
+  const scale = Math.min((window.innerWidth * 0.9) / natW, (window.innerHeight * 0.78) / natH, 1);
+  c.width = Math.round(natW * scale); c.height = Math.round(natH * scale);
+  ctx.clearRect(0, 0, c.width, c.height);
+  ctx.drawImage(bg, 0, 0, c.width, c.height);
+  if (key.keyed) {
+    const subH = key.scale * c.height, subW = subH * (key.keyed.width / key.keyed.height);
+    const left = key.x * c.width - subW / 2, top = key.y * c.height - subH;
+    ctx.save();
+    if (key.flip) { ctx.translate(left + subW, top); ctx.scale(-1, 1); ctx.drawImage(key.keyed, 0, 0, subW, subH); }
+    else ctx.drawImage(key.keyed, left, top, subW, subH);
+    ctx.restore();
+  }
+}
+function renderKey() {
+  el.lbKeyCanvas.hidden = !key.on;
+  el.lbKeyCtrls.hidden = !key.on;
+  el.keyToggle.classList.toggle("active", key.on);
+  el.lightboxImg.style.display = key.on ? "none" : "";
+  if (key.on) {
+    // keying owns the stage — hide the guide + compare overlays
+    el.lbOverlay.hidden = true;
+    el.lbBefore.hidden = true; el.lbDivider.hidden = true; el.lbTagBefore.hidden = true; el.lbTagAfter.hidden = true;
+    keyControls();
+    composeKey();
+  }
+}
+function toggleKey() {
+  key.on = !key.on;
+  if (key.on) { guide.on = false; renderGuide(); cmp.on = false; renderCompare(); }
+  renderKey();
+  if (key.on && !key.subjectImg) el.keySubjectInput.click();
+}
+function loadKeySubject(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => { key.subjectImg = img; rekey(); key.on = true; renderKey(); };
+    img.src = reader.result;
+  };
+  reader.onerror = () => toast("Couldn't read that image.", true);
+  reader.readAsDataURL(file);
+}
+function downloadKeyPreview() {
+  if (!key.on) return;
+  const a = document.createElement("a");
+  a.href = el.lbKeyCanvas.toDataURL("image/png");
+  a.download = "keying-preview.png";
+  a.click();
+}
+
 function openLightbox(record) {
   el.lightboxImg.src = `/library/${record.file}`;
   const parent = record.parentId ? state.library.find((r) => r.id === record.parentId) : null;
@@ -1072,6 +1157,8 @@ function openLightbox(record) {
   renderCompare();
   el.subjSize.value = String(guide.h);
   renderGuide();
+  key.on = false;
+  renderKey();
   el.lightbox.hidden = false;
 }
 function closeLightbox() {
@@ -1079,6 +1166,8 @@ function closeLightbox() {
   el.lightboxImg.src = "";
   el.lbBefore.src = "";
   cmp.on = false;
+  key.on = false;
+  renderKey();
 }
 
 /* ---- Config ---- */
@@ -1240,6 +1329,35 @@ function init() {
     renderCompare();
   });
   el.lbDivider.addEventListener("pointerup", () => { cdrag = null; });
+
+  // Live keying preview
+  $("keyIcon").innerHTML = icon("video", 14);
+  $("keyUploadIcon").innerHTML = icon("upload", 13);
+  $("keyDownloadIcon").innerHTML = icon("download", 13);
+  el.keyToggle.onclick = toggleKey;
+  el.keyUploadBtn.onclick = () => el.keySubjectInput.click();
+  el.keySubjectInput.onchange = () => { const f = el.keySubjectInput.files[0]; if (f) loadKeySubject(f); el.keySubjectInput.value = ""; };
+  el.keyColorChips.querySelectorAll(".chip").forEach((b) => (b.onclick = () => { key.color = b.dataset.kc; rekey(); keyControls(); composeKey(); }));
+  el.keyTol.oninput = () => { key.tol = Number(el.keyTol.value); rekey(); composeKey(); };
+  el.keySoft.oninput = () => { key.soft = Number(el.keySoft.value); rekey(); composeKey(); };
+  el.keyScale.oninput = () => { key.scale = Number(el.keyScale.value) / 100; composeKey(); };
+  el.keyFlip.onclick = () => { key.flip = !key.flip; keyControls(); composeKey(); };
+  el.keyDownload.onclick = downloadKeyPreview;
+  let kdrag = null;
+  el.lbKeyCanvas.addEventListener("pointerdown", (e) => {
+    if (!key.on || !key.keyed) return;
+    e.preventDefault();
+    const r = el.lbKeyCanvas.getBoundingClientRect();
+    kdrag = { sx: e.clientX, sy: e.clientY, x0: key.x, y0: key.y, w: r.width, h: r.height };
+    try { el.lbKeyCanvas.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+  });
+  el.lbKeyCanvas.addEventListener("pointermove", (e) => {
+    if (!kdrag) return;
+    key.x = clamp(kdrag.x0 + (e.clientX - kdrag.sx) / kdrag.w, 0, 1);
+    key.y = clamp(kdrag.y0 + (e.clientY - kdrag.sy) / kdrag.h, 0.1, 1.4);
+    composeKey();
+  });
+  el.lbKeyCanvas.addEventListener("pointerup", () => { kdrag = null; });
 
   // Subject placement guide
   el.lbSubject.innerHTML = SUBJECT_SVG;

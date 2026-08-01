@@ -239,10 +239,12 @@
       <div class="lb-grid" id="lbGrid"></div>
       <div class="subject" id="lbSubject"></div>
     </div>
+    <canvas id="lbKeyCanvas" class="lb-keycanvas" hidden></canvas>
   </div>
   <div class="lb-tools">
     <button class="btn small" id="compareToggle" type="button" hidden><span id="compareIcon"></span> Compare</button>
     <button class="btn small" id="guideToggle" type="button"><span id="guideIcon"></span> Subject guide</button>
+    <button class="btn small" id="keyToggle" type="button"><span id="keyIcon"></span> Keying preview</button>
     <div class="lb-guide-ctrls" id="lbGuideCtrls" hidden>
       <div class="chips">
         <button class="chip" data-pos="left" type="button">Left</button>
@@ -253,7 +255,21 @@
       <button class="chip" id="subjFlip" type="button">Flip</button>
       <button class="chip" id="gridToggle" type="button">Grid</button>
     </div>
+    <div class="lb-key-ctrls" id="lbKeyCtrls" hidden>
+      <button class="btn small" id="keyUploadBtn" type="button"><span id="keyUploadIcon"></span> <span id="keyUploadLabel">Your green‑screen shot</span></button>
+      <div class="chips" id="keyColorChips">
+        <button class="chip" data-kc="green" type="button">Green</button>
+        <button class="chip" data-kc="blue" type="button">Blue</button>
+      </div>
+      <label class="lb-range">Key <input type="range" id="keyTol" min="0" max="200" step="1" /></label>
+      <label class="lb-range">Edge <input type="range" id="keySoft" min="1" max="120" step="1" /></label>
+      <label class="lb-range">Size <input type="range" id="keyScale" min="30" max="150" step="1" /></label>
+      <button class="chip" id="keyFlip" type="button">Flip</button>
+      <button class="btn small" id="keyDownload" type="button"><span id="keyDownloadIcon"></span> Save preview</button>
+    </div>
   </div>
 </div>
+
+<input type="file" id="keySubjectInput" accept="image/*" hidden />
 
 <script src="app.js"></script>
