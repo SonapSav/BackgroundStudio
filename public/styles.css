@@ -524,8 +524,9 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 .switch { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; user-select: none; }
 .enhanced-field { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
 .enhanced-field .microlabel { color: var(--accent-2); }
-.prompt-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.prompt-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
 .prompt-head .microlabel { margin-bottom: 0; }
+#enhanceSwitch { padding: 2px 2px 2px 0; }
 #enhanceSwitch .switch-label { display: inline-flex; align-items: center; gap: 6px; color: var(--accent-2); font-weight: 600; }
 #enhanceSwitch input:checked ~ .switch-label { color: var(--accent); }
 .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
