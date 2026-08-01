@@ -1074,11 +1074,11 @@ let exportRecord = null;
 function setExportOption(key, d, record) {
   const dimEl = key === "uhd" ? el.expUhdDim : el.exp1080Dim;
   const btnEl = el.exportMenu.querySelector(`[data-exp="${key}"]`);
-  if (!d) { dimEl.textContent = ""; btnEl.classList.remove("dimmed"); btnEl.title = ""; return; }
+  if (!d) { dimEl.textContent = ""; btnEl.disabled = false; btnEl.title = ""; return; }
   const upscales = record.width && record.height && Math.max(d.w / record.width, d.h / record.height) > 1.001;
-  dimEl.textContent = `${d.w}×${d.h}${upscales ? " · upscaled" : ""}`;
-  btnEl.classList.toggle("dimmed", !!upscales);
-  btnEl.title = upscales ? "Larger than the source — interpolated (softer). Use the Upscale action for real detail." : "";
+  dimEl.textContent = `${d.w}×${d.h}${upscales ? " · larger than source" : ""}`;
+  btnEl.disabled = !!upscales;
+  btnEl.title = upscales ? "Larger than the source — use the Upscale action first for real 4K detail." : "";
 }
 function openExportMenu(record, btn) {
   exportRecord = record;

@@ -371,8 +371,8 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 }
 .exportmenu button:hover { background: var(--surface-3); }
 .exportmenu .dim { color: var(--muted); font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 11.5px; font-weight: 400; }
-.exportmenu button.dimmed { opacity: .5; }
-.exportmenu button.dimmed:hover { opacity: .7; }
+.exportmenu button:disabled { opacity: .38; cursor: not-allowed; }
+.exportmenu button:disabled:hover { background: none; }
 
 /* --- Reframe modal -------------------------------------------------------- */
 .reframe {
