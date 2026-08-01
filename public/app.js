@@ -1428,7 +1428,9 @@ function renderFilterCanvas() {
 // Decide which element owns the lightbox stage: keying canvas, graded canvas, or the plain image.
 function updateStage() {
   const showKey = key.on;
-  const showGraded = !showKey && !cmp.on && gradeActive();
+  // Show the graded canvas whenever there's a grade OR the Filters panel is open — so opening Filters and
+  // switching between None and a preset never swaps img<->canvas (which would shift/scale the stage).
+  const showGraded = !showKey && !cmp.on && (gradeActive() || filt.panel);
   el.lbKeyCanvas.hidden = !showKey;
   el.lbFilterCanvas.hidden = !showGraded;
   el.lightboxImg.style.display = (showKey || showGraded) ? "none" : "";
