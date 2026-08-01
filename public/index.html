@@ -121,6 +121,7 @@
             <option>6</option><option>9</option><option>12</option><option>24</option>
           </select>
         </label>
+        <button class="btn small" id="upscaleFileBtn" type="button"><span id="upscaleFileIcon"></span> Upscale a file</button>
         <button class="btn small" id="refreshBtn" type="button">Refresh</button>
       </div>
     </div>
@@ -188,6 +189,31 @@
     </div>
   </div>
 </div>
+
+<div class="reframe" id="upscaleModal" hidden>
+  <div class="reframe-panel">
+    <div class="reframe-head">
+      <span class="reframe-title">Upscale</span>
+      <span class="hint">Re-render at higher resolution with enhanced detail.</span>
+      <button class="btn small" id="upscaleClose" type="button" style="margin-left:auto">Close</button>
+    </div>
+    <div class="reframe-body">
+      <div class="upscale-frame" id="upscaleFrame"><img id="upscaleImg" alt="" /></div>
+      <div class="reframe-controls">
+        <p class="microlabel">Target resolution</p>
+        <div class="chips" id="upscaleRes"></div>
+        <p class="hint" id="upscaleDims" style="margin-top:12px"></p>
+        <p class="hint" style="margin-top:8px">Generative upscale — adds detail but may subtly change fine elements.</p>
+      </div>
+    </div>
+    <div class="reframe-foot">
+      <button class="btn" id="upscaleCancel" type="button">Cancel</button>
+      <button class="btn primary" id="upscaleGo" type="button"><span id="upscaleGoIcon"></span> Upscale</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="upscaleFileInput" accept="image/*" hidden />
 
 <div class="genoverlay" id="genOverlay" hidden>
   <div class="genbox">

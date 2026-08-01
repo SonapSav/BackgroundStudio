@@ -11,6 +11,14 @@ const PORT = process.env.PORT || 3016;
 
 const DEFAULTS = { aspectRatio: "16:9", resolution: "2K", keyingSafe: false };
 
+// Instruction for generative upscaling — re-render the same image at higher resolution.
+function buildUpscaleInstruction() {
+  return "Recreate this exact image at a higher resolution. Keep the composition, framing, subject, " +
+    "colours, and every detail identical — do not add, remove, move, or restyle anything, and do not change " +
+    "the crop. Enhance fine detail, sharpness, and texture as though re-captured with a higher-resolution " +
+    "camera. Output a clean, photorealistic, high-resolution version of the same image.";
+}
+
 // Instruction for reframing/outpainting a source image to a new aspect ratio.
 function buildReframeInstruction(target) {
   const orient = target === "9:16" ? "tall vertical" : target === "1:1" ? "square" : target === "4:5" ? "portrait" : "wide horizontal";
@@ -230,6 +238,60 @@ app.post("/api/reframe", async (req, res, next) => {
         model: MODEL,
         extraImageCount: 0,
         edit: { mode: "reframe", to: targetAspect },
+      },
+      result.bytes,
+      result.mediaType
+    );
+
+    res.json(record);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Generative upscale — re-render a library image OR an uploaded image at a higher resolution.
+app.post("/api/upscale", async (req, res, next) => {
+  try {
+    const { sourceId, image, aspectRatio, targetResolution = "4K", seed } = req.body || {};
+
+    let uri, aspect, parentId = null;
+    if (sourceId) {
+      const source = await library.get(sourceId);
+      if (!source) return res.status(404).json({ error: "Source image not found." });
+      const bytes = await library.readImageBytes(source);
+      uri = `data:image/${source.file.split(".").pop()};base64,${bytes.toString("base64")}`;
+      aspect = source.aspectRatio || aspectRatio;
+      parentId = sourceId;
+    } else if (image) {
+      uri = image;
+      aspect = aspectRatio;
+    } else {
+      return res.status(400).json({ error: "Provide a library sourceId or an uploaded image." });
+    }
+
+    const instruction = buildUpscaleInstruction();
+    const result = await generateImage({
+      prompt: instruction,
+      images: [uri],
+      aspectRatio: aspect,
+      resolution: targetResolution,
+      keyingSafe: false, // preserve the image exactly; don't steer colours
+      seed,
+    });
+
+    const record = await library.add(
+      {
+        kind: "upscale",
+        prompt: instruction,
+        seed: Number.isFinite(seed) ? seed : null,
+        parentId,
+        aspectRatio: aspect,
+        resolution: targetResolution,
+        keyingSafe: false,
+        cost: result.cost,
+        model: MODEL,
+        extraImageCount: 0,
+        edit: { mode: "upscale", to: targetResolution },
       },
       result.bytes,
       result.mediaType

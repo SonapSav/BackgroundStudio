@@ -20,8 +20,16 @@ const ICONS = {
   dice: `<rect width="18" height="18" x="3" y="3" rx="3"/><circle cx="8" cy="8" r="1.2"/><circle cx="16" cy="16" r="1.2"/><circle cx="16" cy="8" r="1.2"/><circle cx="8" cy="16" r="1.2"/><circle cx="12" cy="12" r="1.2"/>`,
   star: `<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>`,
   frame: `<line x1="22" x2="2" y1="6" y2="6"/><line x1="22" x2="2" y1="18" y2="18"/><line x1="6" x2="6" y1="2" y2="22"/><line x1="18" x2="18" y1="2" y2="22"/>`,
+  expand: `<polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/>`,
+  upload: `<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>`,
 };
 const REFRAME_ASPECTS = ["16:9", "9:16", "1:1", "4:5"];
+// Supported output ratios; an arbitrary upload snaps to the nearest.
+const ASPECT_RATIOS = [["16:9", 16 / 9], ["9:16", 9 / 16], ["1:1", 1], ["4:5", 4 / 5], ["5:4", 5 / 4], ["4:3", 4 / 3], ["3:4", 3 / 4], ["21:9", 21 / 9]];
+function snapAspect(w, h) {
+  const v = w / h;
+  return ASPECT_RATIOS.reduce((best, c) => (Math.abs(c[1] - v) < Math.abs(best[1] - v) ? c : best))[0];
+}
 // Semi-transparent person silhouette for the subject placement guide.
 const SUBJECT_SVG = `<svg viewBox="0 0 100 150" width="100%" height="100%" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
   <g fill="rgba(15,17,24,0.5)" stroke="#ffffff" stroke-opacity="0.85" stroke-width="2.5" stroke-linejoin="round">
@@ -194,6 +202,10 @@ const el = {
   reframeModal: $("reframeModal"), reframeFrame: $("reframeFrame"), reframeImg: $("reframeImg"),
   reframeAspects: $("reframeAspects"), reframeRes: $("reframeRes"),
   reframeClose: $("reframeClose"), reframeCancel: $("reframeCancel"), reframeGo: $("reframeGo"),
+  upscaleModal: $("upscaleModal"), upscaleFrame: $("upscaleFrame"), upscaleImg: $("upscaleImg"),
+  upscaleRes: $("upscaleRes"), upscaleDims: $("upscaleDims"), upscaleClose: $("upscaleClose"),
+  upscaleCancel: $("upscaleCancel"), upscaleGo: $("upscaleGo"),
+  upscaleFileBtn: $("upscaleFileBtn"), upscaleFileInput: $("upscaleFileInput"),
   dropBar: $("dragDropBar"), dropOptAdjust: $("dropOptAdjust"), dropOptRef: $("dropOptRef"),
   genOverlay: $("genOverlay"), genTitle: $("genTitle"),
   regionRow: $("regionRow"), markRegionBtn: $("markRegionBtn"), regionChip: $("regionChip"),
@@ -681,7 +693,7 @@ function renderLibrary() {
     card.innerHTML = `
       <div class="shot">
         <button class="fav${r.favorite ? " on" : ""}" type="button" title="Favorite">${icon("star", 15)}</button>
-        ${r.parentId ? `<span class="lineage">${icon(r.kind === "reframe" ? "frame" : "wand", 11)} ${r.kind === "reframe" ? "reframed" : "adjusted"}</span>` : ""}
+        ${r.parentId ? `<span class="lineage">${icon(r.kind === "reframe" ? "frame" : r.kind === "upscale" ? "expand" : "wand", 11)} ${r.kind === "reframe" ? "reframed" : r.kind === "upscale" ? "upscaled" : "adjusted"}</span>` : ""}
         <span class="drag-handle" title="Drag onto the base slot to adjust">${icon("grip", 14)}</span>
         <img src="/library/${r.file}" alt="" loading="lazy" draggable="false" />
       </div>
@@ -696,6 +708,7 @@ function renderLibrary() {
         <div class="actions">
           <button class="btn small" data-act="adjust" type="button">${icon("wand", 13)} Adjust</button>
           <button class="btn small" data-act="reframe" type="button">${icon("frame", 13)} Reframe</button>
+          <button class="btn small" data-act="upscale" type="button">${icon("expand", 13)} Upscale</button>
           <button class="btn small" data-act="download" type="button">${icon("download", 13)} Download</button>
           <button class="btn small danger" data-act="delete" type="button">${icon("trash", 13)} Delete</button>
         </div>
@@ -741,6 +754,7 @@ function renderLibrary() {
     };
     card.querySelector('[data-act="adjust"]').onclick = () => startAdjust(r);
     card.querySelector('[data-act="reframe"]').onclick = () => openReframe(r);
+    card.querySelector('[data-act="upscale"]').onclick = () => openUpscaleFromCard(r);
     card.querySelector('[data-act="download"]').onclick = () => downloadImage(r);
     card.querySelector('[data-act="delete"]').onclick = (e) => deleteImage(r, e.currentTarget);
     el.grid.appendChild(card);
@@ -794,6 +808,65 @@ async function reframeGo() {
     toast(err.message, true);
   } finally {
     el.reframeGo.disabled = false;
+    el.genOverlay.hidden = true;
+  }
+}
+
+/* ---- Upscale (library image or an uploaded file) ---- */
+const upscaleState = { sourceId: null, imageUri: null, aspect: "16:9", srcW: 0, srcH: 0, resolution: "4K" };
+function renderUpscale() {
+  el.upscaleFrame.style.aspectRatio = upscaleState.aspect.replace(":", " / ");
+  buildChips(el.upscaleRes, ["2K", "4K"], () => upscaleState.resolution, (v) => { upscaleState.resolution = v; renderUpscale(); }, (v) => dimsFor(v, upscaleState.aspect));
+  const from = upscaleState.srcW && upscaleState.srcH ? `${upscaleState.srcW}×${upscaleState.srcH}` : "source";
+  el.upscaleDims.textContent = `${from} → ${dimsFor(upscaleState.resolution, upscaleState.aspect)}`;
+}
+function openUpscale({ sourceId = null, imageUri, aspect, srcW, srcH }) {
+  upscaleState.sourceId = sourceId;
+  upscaleState.imageUri = imageUri;
+  upscaleState.aspect = aspect;
+  upscaleState.srcW = srcW || 0;
+  upscaleState.srcH = srcH || 0;
+  upscaleState.resolution = "4K";
+  el.upscaleImg.src = imageUri;
+  renderUpscale();
+  el.upscaleModal.hidden = false;
+}
+function openUpscaleFromCard(record) {
+  openUpscale({ sourceId: record.id, imageUri: `/library/${record.file}`, aspect: record.aspectRatio || snapAspect(record.width, record.height), srcW: record.width, srcH: record.height });
+}
+function openUpscaleFromFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const dataUri = reader.result;
+    const img = new Image();
+    img.onload = () => openUpscale({ imageUri: dataUri, aspect: snapAspect(img.naturalWidth, img.naturalHeight), srcW: img.naturalWidth, srcH: img.naturalHeight });
+    img.src = dataUri;
+  };
+  reader.onerror = () => toast("Couldn't read that file.", true);
+  reader.readAsDataURL(file);
+}
+function closeUpscale() { el.upscaleModal.hidden = true; el.upscaleImg.src = ""; }
+async function upscaleGo() {
+  el.upscaleGo.disabled = true;
+  el.genTitle.textContent = "Upscaling";
+  el.genOverlay.hidden = false;
+  try {
+    const body = { targetResolution: upscaleState.resolution, aspectRatio: upscaleState.aspect };
+    if (upscaleState.sourceId) body.sourceId = upscaleState.sourceId;
+    else body.image = upscaleState.imageUri;
+    const res = await fetch("/api/upscale", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Upscale failed.");
+    applySpend(typeof data.cost === "number" ? data.cost : 0);
+    setTimeout(loadBalance, 6000);
+    closeUpscale();
+    state.page = 1;
+    await loadLibrary();
+    toast(`Upscaled to ${upscaleState.resolution}.`);
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    el.upscaleGo.disabled = false;
     el.genOverlay.hidden = true;
   }
 }
@@ -1099,6 +1172,15 @@ function init() {
   el.reframeGo.onclick = reframeGo;
   el.reframeModal.onclick = (e) => { if (e.target === el.reframeModal) closeReframe(); };
 
+  $("upscaleGoIcon").innerHTML = icon("expand", 15);
+  $("upscaleFileIcon").innerHTML = icon("upload", 13);
+  el.upscaleClose.onclick = closeUpscale;
+  el.upscaleCancel.onclick = closeUpscale;
+  el.upscaleGo.onclick = upscaleGo;
+  el.upscaleModal.onclick = (e) => { if (e.target === el.upscaleModal) closeUpscale(); };
+  el.upscaleFileBtn.onclick = () => el.upscaleFileInput.click();
+  el.upscaleFileInput.onchange = () => { const f = el.upscaleFileInput.files[0]; if (f) openUpscaleFromFile(f); el.upscaleFileInput.value = ""; };
+
   $("favFilterIcon").innerHTML = icon("star", 13);
   el.librarySearch.oninput = () => { state.search = el.librarySearch.value; state.page = 1; renderLibrary(); };
   el.favFilter.onclick = () => { state.favOnly = !state.favOnly; el.favFilter.classList.toggle("active", state.favOnly); state.page = 1; renderLibrary(); };
@@ -1141,7 +1223,7 @@ function init() {
   // Lightbox
   el.lightboxClose.onclick = closeLightbox;
   el.lightbox.onclick = (e) => { if (e.target === el.lightbox) closeLightbox(); };
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeLightbox(); closeRegionEditor(); closeReframe(); } });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeLightbox(); closeRegionEditor(); closeReframe(); closeUpscale(); } });
 
   // Before/after compare
   $("compareIcon").innerHTML = icon("replace", 14);
