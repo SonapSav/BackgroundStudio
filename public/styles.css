@@ -231,7 +231,14 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 
 /* Sticky action bar */
 .actionbar {
-  position: sticky; bottom: 0; display: flex; gap: 10px; padding-top: 12px; margin-top: 4px;
+  position: sticky; bottom: 0; z-index: 5; display: flex; gap: 10px;
+  /* opaque bar that spans the full panel width so content doesn't show through while it floats */
+  margin: 12px calc(-1 * var(--gap)) calc(-1 * var(--gap));
+  padding: 12px var(--gap) var(--gap);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--radius) var(--radius);
+  box-shadow: 0 -10px 22px -12px rgba(0, 0, 0, .5);
 }
 .actionbar .btn { flex: 1; }
 
