@@ -75,7 +75,8 @@ through **[OpenRouter](https://openrouter.ai)**, so all you need is an OpenRoute
   into the keying preview (with a keying‑safe warning) and bakes into exports; **Download** it or **Save to library** as a
   new, re‑editable item. Fully client‑side.
 - **Export presets** — download at exact broadcast sizes — **1080p** (1920×1080) or **4K UHD** (3840×2160)
-  for the image's aspect ratio — or the Original; sizes larger than the source are disabled (Upscale first).
+  for the image's aspect ratio — or the Original, in **JPEG / PNG / WebP**; sizes larger than the source are
+  disabled (Upscale first).
 - **Library** — **search** by prompt, **favourite** ⭐, sort (newest / oldest / cost), pagination (persists
   across refreshes), per‑image metadata (ratio · tier · dimensions · megapixels · cost · seed), one‑click
   prompt copy, download, and delete.
@@ -216,7 +217,8 @@ Then open **http://localhost:3016** in your browser.
 - **Filters** — click **Filters**, pick a preset and tune Bright/Contrast/Saturation/Blur/Vignette/Grain, then
   **Download** the graded image or **Save to library** as a new item.
 - **Search**, **favourite**, and **sort** in the library.
-- **Download** → choose **Original**, **1080p**, or **4K UHD**, and drop the file behind your keyed footage.
+- **Download** → choose a size (**Original**, **1080p**, **4K UHD**) and format (**JPEG / PNG / WebP**), and drop the
+  file behind your keyed footage.
 
 ---
 
@@ -255,6 +257,12 @@ The visual language ("studio console after dark" — a dark theme with an amber 
 ---
 
 ## 📋 Changelog
+
+### 1.1.1 — Export formats — 2026-08-01
+
+- **JPEG / PNG / WebP** export toggle on the download menu and the Filters panel (remembered between sessions),
+  applied to the 1080p / 4K UHD presets and the Filters download. JPEG stays the default; **Original** remains a
+  true pass-through. WebP is feature-detected and hidden where the browser can't encode it.
 
 ### 1.1.0 — In‑browser filters & grading — 2026-08-01
 
