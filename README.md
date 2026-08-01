@@ -48,8 +48,9 @@ through **[OpenRouter](https://openrouter.ai)**, so all you need is an OpenRoute
   seed (click to reuse it).
 - **Prompt enhancer** — a toggle that expands your brief into a rich, detailed background‑scene prompt
   (via a cheap text model) in a separate, editable field, before generating.
-- **Describe an image** — upload any reference photo and a multimodal model writes a reusable
-  background‑scene prompt into the box, to seed variations on that look.
+- **Describe an image** — the **Describe an image** button (in the action bar, next to *Preview prompt*)
+  lets you upload any reference photo; a multimodal model then writes a reusable background‑scene prompt
+  into the box, to seed variations on that look.
 
 ### Edit
 - **Adjust** any library image with a new prompt — click **Adjust**, or drag a card onto the base slot
@@ -190,8 +191,8 @@ Then open **http://localhost:3016** in your browser.
 
 **Generate**
 
-1. Pick pills (or type freely) — or **Describe an image** to turn a reference photo into a prompt.
-   Optionally flip on **Enhance prompt** to expand your brief, and **Preview prompt** to see/edit the result.
+1. Pick pills (or type freely) — or click **Describe an image** in the action bar to turn a reference photo
+   into a prompt. Optionally flip on **Enhance prompt** to expand your brief, and **Preview prompt** to see/edit it.
 2. Set **aspect ratio**, **resolution**, **image count**, **seed**, and **keying‑safe**.
 3. Hit **Generate** — results land in the library.
 
