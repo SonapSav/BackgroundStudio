@@ -248,6 +248,28 @@ The visual language ("studio console after dark" — a dark theme with an amber 
 
 ---
 
+## 📋 Changelog
+
+### Audit & hardening — 2026-08-01
+
+An end-to-end correctness and reliability pass (no new features):
+
+- **Concurrency** — *Describe*, *Preview*, and *Generate* can no longer overlap. `Ctrl`/`⌘`+`Enter`
+  and rapid re-clicks can't fire duplicate (billed) API calls or dismiss the "Generating" overlay
+  mid‑batch.
+- **Resolution labels** — every aspect ratio now shows dimensions + megapixels (exact for 16:9 / 9:16 /
+  1:1, an estimated `≈` for reframe/upload ratios like 4:5, 4:3, 3:4, 21:9) instead of a blank.
+- **Editing fidelity** — JPEG source images are now sent with the correct MIME type (`image/jpeg`) on
+  adjust / reframe / upscale.
+- **Robustness** — atomic library‑index writes (no truncated reads under concurrent access, and no
+  leftover temp file on a failed rename), clearer 400/404/410/413 error messages, request validation
+  that rejects malformed input **before** any billable call, numeric‑string seeds honoured instead of
+  silently dropped, and no orphaned image files if a write fails.
+- **Polish** — the subject‑placement guide resets between images, the *Replace* region label is correct,
+  and the model is labelled **Image model** (the enhancer/describe features use a separate text model).
+
+---
+
 ## 📝 Model, licensing & commercial use
 
 **This project's code** is released under the **MIT License** (see [`LICENSE`](LICENSE)) —
