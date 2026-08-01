@@ -24,6 +24,7 @@ const ICONS = {
   upload: `<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>`,
   video: `<path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/>`,
   scan: `<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/>`,
+  sliders: `<line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>`,
 };
 const REFRAME_ASPECTS = ["16:9", "9:16", "1:1", "4:5"];
 // Supported output ratios; an arbitrary upload snaps to the nearest.
@@ -220,6 +221,9 @@ const el = {
   keyUploadBtn: $("keyUploadBtn"), keyUploadLabel: $("keyUploadLabel"), keySubjectInput: $("keySubjectInput"),
   keyColorChips: $("keyColorChips"), keyTol: $("keyTol"), keySoft: $("keySoft"), keyScale: $("keyScale"),
   keyFlip: $("keyFlip"), keyDownload: $("keyDownload"),
+  filterToggle: $("filterToggle"), lbFilterCtrls: $("lbFilterCtrls"), filterPresets: $("filterPresets"),
+  filBright: $("filBright"), filContrast: $("filContrast"), filSat: $("filSat"),
+  filterReset: $("filterReset"), filterDownload: $("filterDownload"),
   reframeModal: $("reframeModal"), reframeFrame: $("reframeFrame"), reframeImg: $("reframeImg"),
   reframeAspects: $("reframeAspects"), reframeRes: $("reframeRes"),
   reframeClose: $("reframeClose"), reframeCancel: $("reframeCancel"), reframeGo: $("reframeGo"),
@@ -1192,7 +1196,7 @@ function renderGuide() {
   s.style.height = guide.h + "%";
   s.style.transform = `translateX(-50%)${guide.flip ? " scaleX(-1)" : ""}`;
 }
-function toggleGuide() { guide.on = !guide.on; if (guide.on) { cmp.on = false; renderCompare(); key.on = false; renderKey(); } renderGuide(); }
+function toggleGuide() { guide.on = !guide.on; if (guide.on) { cmp.on = false; renderCompare(); key.on = false; renderKey(); filt.on = false; renderFilter(); } renderGuide(); }
 function setSubjectPos(pos) { guide.x = pos === "left" ? 28 : pos === "right" ? 72 : 50; renderGuide(); }
 
 /* Before/after compare (only for images that have a parent) */
@@ -1212,7 +1216,7 @@ function renderCompare() {
 function toggleCompare() {
   if (!cmp.parentFile) { toast("No earlier version to compare.", true); return; }
   cmp.on = !cmp.on;
-  if (cmp.on) { guide.on = false; renderGuide(); key.on = false; renderKey(); el.lbBefore.src = `/library/${cmp.parentFile}`; cmp.pos = 50; }
+  if (cmp.on) { guide.on = false; renderGuide(); key.on = false; renderKey(); filt.on = false; renderFilter(); el.lbBefore.src = `/library/${cmp.parentFile}`; cmp.pos = 50; }
   renderCompare();
 }
 /* ---- Live keying preview (chroma-key your green-screen shot over a background) ---- */
@@ -1273,7 +1277,7 @@ function renderKey() {
 }
 function toggleKey() {
   key.on = !key.on;
-  if (key.on) { guide.on = false; renderGuide(); cmp.on = false; renderCompare(); }
+  if (key.on) { guide.on = false; renderGuide(); cmp.on = false; renderCompare(); filt.on = false; renderFilter(); }
   renderKey();
   if (key.on && !key.subjectImg) el.keySubjectInput.click();
 }
@@ -1295,7 +1299,66 @@ function downloadKeyPreview() {
   a.click();
 }
 
+/* ---- Post-generation filters (client-side, non-destructive; baked on export) ---- */
+const FILTER_PRESETS = {
+  none:    { brightness: 100, contrast: 100, saturate: 100, sepia: 0,  grayscale: 0,   hueRotate: 0 },
+  warm:    { brightness: 103, contrast: 102, saturate: 115, sepia: 25, grayscale: 0,   hueRotate: -6 },
+  cool:    { brightness: 100, contrast: 105, saturate: 108, sepia: 0,  grayscale: 0,   hueRotate: 12 },
+  vivid:   { brightness: 102, contrast: 112, saturate: 145, sepia: 0,  grayscale: 0,   hueRotate: 0 },
+  muted:   { brightness: 102, contrast: 96,  saturate: 70,  sepia: 0,  grayscale: 0,   hueRotate: 0 },
+  vintage: { brightness: 105, contrast: 95,  saturate: 115, sepia: 35, grayscale: 0,   hueRotate: -8 },
+  sepia:   { brightness: 105, contrast: 105, saturate: 90,  sepia: 70, grayscale: 0,   hueRotate: 0 },
+  bw:      { brightness: 105, contrast: 110, saturate: 100, sepia: 0,  grayscale: 100, hueRotate: 0 },
+  noir:    { brightness: 96,  contrast: 140, saturate: 100, sepia: 0,  grayscale: 100, hueRotate: 0 },
+  cine:    { brightness: 101, contrast: 110, saturate: 120, sepia: 15, grayscale: 0,   hueRotate: -4 },
+};
+const filt = { on: false, preset: "none", brightness: 100, contrast: 100, saturate: 100, sepia: 0, grayscale: 0, hueRotate: 0 };
+// The same string drives the live CSS preview AND the baked export (ctx.filter), so they always match.
+function filterString(f) {
+  return `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturate}%) sepia(${f.sepia}%) grayscale(${f.grayscale}%) hue-rotate(${f.hueRotate}deg)`;
+}
+function renderFilter() {
+  el.lbFilterCtrls.hidden = !filt.on;
+  el.filterToggle.classList.toggle("active", filt.on);
+  el.lightboxImg.style.filter = filt.on ? filterString(filt) : "";
+  if (filt.on) {
+    el.filBright.value = String(filt.brightness);
+    el.filContrast.value = String(filt.contrast);
+    el.filSat.value = String(filt.saturate);
+    el.filterPresets.querySelectorAll(".chip").forEach((b) => b.classList.toggle("active", b.dataset.fp === filt.preset));
+  }
+}
+function resetFilterState() { Object.assign(filt, FILTER_PRESETS.none, { on: false, preset: "none" }); }
+function toggleFilter() {
+  filt.on = !filt.on;
+  if (filt.on) { guide.on = false; renderGuide(); cmp.on = false; renderCompare(); key.on = false; renderKey(); }
+  renderFilter();
+}
+function applyFilterPreset(name) {
+  Object.assign(filt, FILTER_PRESETS[name] || FILTER_PRESETS.none, { preset: name });
+  renderFilter();
+}
+function downloadFiltered() {
+  if (!filt.on || !lbRecord) return;
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement("canvas");
+    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const ctx = c.getContext("2d");
+    ctx.filter = filterString(filt); // bake the exact same look into the pixels
+    ctx.drawImage(img, 0, 0);
+    const a = document.createElement("a");
+    a.href = c.toDataURL("image/jpeg", 0.95);
+    a.download = `background-filtered-${c.width}x${c.height}.jpg`;
+    a.click();
+  };
+  img.onerror = () => toast("Couldn't load the image for export.", true);
+  img.src = `/library/${lbRecord.file}`;
+}
+
+let lbRecord = null;
 function openLightbox(record) {
+  lbRecord = record;
   el.lightboxImg.src = `/library/${record.file}`;
   const parent = record.parentId ? state.library.find((r) => r.id === record.parentId) : null;
   cmp.parentFile = parent ? parent.file : null;
@@ -1307,6 +1370,7 @@ function openLightbox(record) {
   renderGuide();
   key.on = false;
   renderKey();
+  resetFilterState(); renderFilter(); // clean slate, matching the other tools
   el.lightbox.hidden = false;
 }
 function closeLightbox() {
@@ -1316,6 +1380,8 @@ function closeLightbox() {
   cmp.on = false;
   key.on = false;
   renderKey();
+  resetFilterState(); renderFilter();
+  lbRecord = null;
 }
 
 /* ---- Config ---- */
@@ -1522,6 +1588,17 @@ function init() {
     composeKey();
   });
   el.lbKeyCanvas.addEventListener("pointerup", () => { kdrag = null; });
+
+  // Post-generation filters
+  $("filterIcon").innerHTML = icon("sliders", 14);
+  $("filterDownloadIcon").innerHTML = icon("download", 13);
+  el.filterToggle.onclick = toggleFilter;
+  el.filterPresets.querySelectorAll(".chip").forEach((b) => (b.onclick = () => applyFilterPreset(b.dataset.fp)));
+  el.filBright.oninput = () => { filt.brightness = Number(el.filBright.value); filt.preset = "custom"; renderFilter(); };
+  el.filContrast.oninput = () => { filt.contrast = Number(el.filContrast.value); filt.preset = "custom"; renderFilter(); };
+  el.filSat.oninput = () => { filt.saturate = Number(el.filSat.value); filt.preset = "custom"; renderFilter(); };
+  el.filterReset.onclick = () => applyFilterPreset("none");
+  el.filterDownload.onclick = downloadFiltered;
 
   // Subject placement guide
   el.lbSubject.innerHTML = SUBJECT_SVG;

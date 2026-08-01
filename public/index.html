@@ -261,6 +261,7 @@
     <button class="btn small" id="compareToggle" type="button" hidden><span id="compareIcon"></span> Compare</button>
     <button class="btn small" id="guideToggle" type="button"><span id="guideIcon"></span> Subject guide</button>
     <button class="btn small" id="keyToggle" type="button"><span id="keyIcon"></span> Keying preview</button>
+    <button class="btn small" id="filterToggle" type="button"><span id="filterIcon"></span> Filters</button>
     <div class="lb-guide-ctrls" id="lbGuideCtrls" hidden>
       <div class="chips">
         <button class="chip" data-pos="left" type="button">Left</button>
@@ -282,6 +283,25 @@
       <label class="lb-range">Size <input type="range" id="keyScale" min="30" max="150" step="1" /></label>
       <button class="chip" id="keyFlip" type="button">Flip</button>
       <button class="btn small" id="keyDownload" type="button"><span id="keyDownloadIcon"></span> Save preview</button>
+    </div>
+    <div class="lb-filter-ctrls" id="lbFilterCtrls" hidden>
+      <div class="chips" id="filterPresets">
+        <button class="chip active" data-fp="none" type="button">None</button>
+        <button class="chip" data-fp="warm" type="button">Warm</button>
+        <button class="chip" data-fp="cool" type="button">Cool</button>
+        <button class="chip" data-fp="vivid" type="button">Vivid</button>
+        <button class="chip" data-fp="muted" type="button">Muted</button>
+        <button class="chip" data-fp="vintage" type="button">Vintage</button>
+        <button class="chip" data-fp="sepia" type="button">Sepia</button>
+        <button class="chip" data-fp="bw" type="button">B&amp;W</button>
+        <button class="chip" data-fp="noir" type="button">Noir</button>
+        <button class="chip" data-fp="cine" type="button">Cinema</button>
+      </div>
+      <label class="lb-range">Bright <input type="range" id="filBright" min="50" max="150" step="1" /></label>
+      <label class="lb-range">Contrast <input type="range" id="filContrast" min="50" max="150" step="1" /></label>
+      <label class="lb-range">Saturation <input type="range" id="filSat" min="0" max="200" step="1" /></label>
+      <button class="chip" id="filterReset" type="button">Reset</button>
+      <button class="btn small" id="filterDownload" type="button"><span id="filterDownloadIcon"></span> Download</button>
     </div>
   </div>
 </div>
