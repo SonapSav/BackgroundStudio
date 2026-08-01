@@ -1070,12 +1070,21 @@ function exportDims(record, tier) {
   return w >= h ? { w: Math.round(shortEdge * ar), h: shortEdge } : { w: shortEdge, h: Math.round(shortEdge / ar) };
 }
 let exportRecord = null;
+// Mark a preset that's bigger than the source (an interpolated upscale, not real detail).
+function setExportOption(key, d, record) {
+  const dimEl = key === "uhd" ? el.expUhdDim : el.exp1080Dim;
+  const btnEl = el.exportMenu.querySelector(`[data-exp="${key}"]`);
+  if (!d) { dimEl.textContent = ""; btnEl.classList.remove("dimmed"); btnEl.title = ""; return; }
+  const upscales = record.width && record.height && Math.max(d.w / record.width, d.h / record.height) > 1.001;
+  dimEl.textContent = `${d.w}×${d.h}${upscales ? " · upscaled" : ""}`;
+  btnEl.classList.toggle("dimmed", !!upscales);
+  btnEl.title = upscales ? "Larger than the source — interpolated (softer). Use the Upscale action for real detail." : "";
+}
 function openExportMenu(record, btn) {
   exportRecord = record;
   el.expOrigDim.textContent = record.width && record.height ? `${record.width}×${record.height}` : "";
-  const d1 = exportDims(record, "1080"), d4 = exportDims(record, "uhd");
-  el.exp1080Dim.textContent = d1 ? `${d1.w}×${d1.h}` : "";
-  el.expUhdDim.textContent = d4 ? `${d4.w}×${d4.h}` : "";
+  setExportOption("1080", exportDims(record, "1080"), record);
+  setExportOption("uhd", exportDims(record, "uhd"), record);
   el.exportMenu.hidden = false;
   const r = btn.getBoundingClientRect(), m = el.exportMenu.getBoundingClientRect();
   let top = r.bottom + 6, left = r.left;
