@@ -214,6 +214,7 @@ const el = {
   upscaleCancel: $("upscaleCancel"), upscaleGo: $("upscaleGo"),
   upscaleFileBtn: $("upscaleFileBtn"), upscaleFileInput: $("upscaleFileInput"),
   exportMenu: $("exportMenu"), expOrigDim: $("expOrigDim"), exp1080Dim: $("exp1080Dim"), expUhdDim: $("expUhdDim"),
+  exp1080Help: $("exp1080Help"), expUhdHelp: $("expUhdHelp"),
   dropBar: $("dragDropBar"), dropOptAdjust: $("dropOptAdjust"), dropOptRef: $("dropOptRef"),
   genOverlay: $("genOverlay"), genTitle: $("genTitle"),
   regionRow: $("regionRow"), markRegionBtn: $("markRegionBtn"), regionChip: $("regionChip"),
@@ -1073,12 +1074,13 @@ let exportRecord = null;
 // Mark a preset that's bigger than the source (an interpolated upscale, not real detail).
 function setExportOption(key, d, record) {
   const dimEl = key === "uhd" ? el.expUhdDim : el.exp1080Dim;
+  const helpEl = key === "uhd" ? el.expUhdHelp : el.exp1080Help;
   const btnEl = el.exportMenu.querySelector(`[data-exp="${key}"]`);
-  if (!d) { dimEl.textContent = ""; btnEl.disabled = false; btnEl.title = ""; return; }
+  if (!d) { dimEl.textContent = ""; helpEl.hidden = true; btnEl.classList.remove("is-disabled"); return; }
   const upscales = record.width && record.height && Math.max(d.w / record.width, d.h / record.height) > 1.001;
-  dimEl.textContent = `${d.w}×${d.h}${upscales ? " · larger than source" : ""}`;
-  btnEl.disabled = !!upscales;
-  btnEl.title = upscales ? "Larger than the source — use the Upscale action first for real 4K detail." : "";
+  dimEl.textContent = `${d.w}×${d.h}`;
+  btnEl.classList.toggle("is-disabled", !!upscales);
+  helpEl.hidden = !upscales;
 }
 function openExportMenu(record, btn) {
   exportRecord = record;
@@ -1363,8 +1365,10 @@ function init() {
 
   // Export menu (download size presets)
   el.exportMenu.querySelector('[data-exp="orig"]').onclick = () => { if (exportRecord) downloadImage(exportRecord); closeExportMenu(); };
-  el.exportMenu.querySelector('[data-exp="1080"]').onclick = () => { if (exportRecord) exportResized(exportRecord, "1080"); closeExportMenu(); };
-  el.exportMenu.querySelector('[data-exp="uhd"]').onclick = () => { if (exportRecord) exportResized(exportRecord, "uhd"); closeExportMenu(); };
+  const b1080 = el.exportMenu.querySelector('[data-exp="1080"]');
+  const buhd = el.exportMenu.querySelector('[data-exp="uhd"]');
+  b1080.onclick = () => { if (b1080.classList.contains("is-disabled")) return; if (exportRecord) exportResized(exportRecord, "1080"); closeExportMenu(); };
+  buhd.onclick = () => { if (buhd.classList.contains("is-disabled")) return; if (exportRecord) exportResized(exportRecord, "uhd"); closeExportMenu(); };
   document.addEventListener("pointerdown", (e) => { if (!el.exportMenu.hidden && !el.exportMenu.contains(e.target) && !e.target.closest('[data-act="download"]')) closeExportMenu(); });
   window.addEventListener("scroll", () => { if (!el.exportMenu.hidden) closeExportMenu(); }, true);
 
