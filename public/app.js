@@ -222,7 +222,7 @@ const el = {
   keyColorChips: $("keyColorChips"), keyTol: $("keyTol"), keySoft: $("keySoft"), keyScale: $("keyScale"),
   keyFlip: $("keyFlip"), keyDownload: $("keyDownload"),
   filterToggle: $("filterToggle"), lbFilterCtrls: $("lbFilterCtrls"), filterPresets: $("filterPresets"),
-  filBright: $("filBright"), filContrast: $("filContrast"), filSat: $("filSat"),
+  filBright: $("filBright"), filContrast: $("filContrast"), filSat: $("filSat"), filBlur: $("filBlur"),
   filterReset: $("filterReset"), filterDownload: $("filterDownload"),
   reframeModal: $("reframeModal"), reframeFrame: $("reframeFrame"), reframeImg: $("reframeImg"),
   reframeAspects: $("reframeAspects"), reframeRes: $("reframeRes"),
@@ -1312,23 +1312,36 @@ const FILTER_PRESETS = {
   noir:    { brightness: 96,  contrast: 140, saturate: 100, sepia: 0,  grayscale: 100, hueRotate: 0 },
   cine:    { brightness: 101, contrast: 110, saturate: 120, sepia: 15, grayscale: 0,   hueRotate: -4 },
 };
-const filt = { on: false, preset: "none", brightness: 100, contrast: 100, saturate: 100, sepia: 0, grayscale: 0, hueRotate: 0 };
-// The same string drives the live CSS preview AND the baked export (ctx.filter), so they always match.
-function filterString(f) {
-  return `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturate}%) sepia(${f.sepia}%) grayscale(${f.grayscale}%) hue-rotate(${f.hueRotate}deg)`;
+const filt = { on: false, preset: "none", brightness: 100, contrast: 100, saturate: 100, sepia: 0, grayscale: 0, hueRotate: 0, blur: 0 };
+// Blur is an absolute px radius, so — unlike the per-pixel colour filters — it must scale to the surface
+// it's drawn on. We store blur as a slider value (0-100) and convert to px as a fraction of the image
+// width, using the DISPLAYED width for the live preview and the NATURAL width for the baked export, so
+// what you see on screen matches what you download.
+const MAX_BLUR_FRAC = 0.025; // slider 100 => 2.5% of image width
+function blurPxFor(f, width) { return (f.blur / 100) * MAX_BLUR_FRAC * width; }
+// The colour half of the string is identical for preview and bake; the blur px is passed in per-surface.
+function filterString(f, blurPx) {
+  const s = `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturate}%) sepia(${f.sepia}%) grayscale(${f.grayscale}%) hue-rotate(${f.hueRotate}deg)`;
+  return blurPx > 0 ? `${s} blur(${blurPx}px)` : s;
 }
 function renderFilter() {
   el.lbFilterCtrls.hidden = !filt.on;
   el.filterToggle.classList.toggle("active", filt.on);
-  el.lightboxImg.style.filter = filt.on ? filterString(filt) : "";
   if (filt.on) {
+    const dispW = el.lightboxImg.getBoundingClientRect().width || el.lightboxImg.naturalWidth || 1;
+    el.lightboxImg.style.filter = filterString(filt, blurPxFor(filt, dispW));
     el.filBright.value = String(filt.brightness);
     el.filContrast.value = String(filt.contrast);
     el.filSat.value = String(filt.saturate);
+    el.filBlur.value = String(filt.blur);
     el.filterPresets.querySelectorAll(".chip").forEach((b) => b.classList.toggle("active", b.dataset.fp === filt.preset));
+  } else {
+    el.lightboxImg.style.filter = "";
   }
 }
-function resetFilterState() { Object.assign(filt, FILTER_PRESETS.none, { on: false, preset: "none" }); }
+function resetFilterState() { Object.assign(filt, FILTER_PRESETS.none, { on: false, preset: "none", blur: 0 }); }
+// Reset button: clear the grade and the blur, but keep the panel open.
+function clearFilter() { Object.assign(filt, FILTER_PRESETS.none, { preset: "none", blur: 0 }); renderFilter(); }
 function toggleFilter() {
   filt.on = !filt.on;
   if (filt.on) { guide.on = false; renderGuide(); cmp.on = false; renderCompare(); key.on = false; renderKey(); }
@@ -1338,15 +1351,38 @@ function applyFilterPreset(name) {
   Object.assign(filt, FILTER_PRESETS[name] || FILTER_PRESETS.none, { preset: name });
   renderFilter();
 }
+// Bake the current filter into a full-resolution canvas.
+function drawFilteredToCanvas(img) {
+  const w = img.naturalWidth, h = img.naturalHeight;
+  const out = document.createElement("canvas");
+  out.width = w; out.height = h;
+  const octx = out.getContext("2d");
+  const b = blurPxFor(filt, w);
+  if (b <= 0) { octx.filter = filterString(filt, 0); octx.drawImage(img, 0, 0); return out; }
+  // Pad + replicate the edge pixels outward so the blur samples real colour past the frame instead of
+  // transparency (which would flatten to a dark halo on JPEG). M covers the gaussian tail (~3× radius).
+  const M = Math.ceil(b * 3);
+  const pad = document.createElement("canvas");
+  pad.width = w + 2 * M; pad.height = h + 2 * M;
+  const p = pad.getContext("2d");
+  p.drawImage(img, M, M, w, h);                          // centre
+  p.drawImage(img, 0, 0, w, 1, M, 0, w, M);              // top edge stretched up
+  p.drawImage(img, 0, h - 1, w, 1, M, M + h, w, M);      // bottom edge stretched down
+  p.drawImage(img, 0, 0, 1, h, 0, M, M, h);              // left edge stretched left
+  p.drawImage(img, w - 1, 0, 1, h, M + w, M, M, h);      // right edge stretched right
+  p.drawImage(img, 0, 0, 1, 1, 0, 0, M, M);              // corners
+  p.drawImage(img, w - 1, 0, 1, 1, M + w, 0, M, M);
+  p.drawImage(img, 0, h - 1, 1, 1, 0, M + h, M, M);
+  p.drawImage(img, w - 1, h - 1, 1, 1, M + w, M + h, M, M);
+  octx.filter = filterString(filt, b);
+  octx.drawImage(pad, -M, -M);                           // blur, cropping the padding back off
+  return out;
+}
 function downloadFiltered() {
   if (!filt.on || !lbRecord) return;
   const img = new Image();
   img.onload = () => {
-    const c = document.createElement("canvas");
-    c.width = img.naturalWidth; c.height = img.naturalHeight;
-    const ctx = c.getContext("2d");
-    ctx.filter = filterString(filt); // bake the exact same look into the pixels
-    ctx.drawImage(img, 0, 0);
+    const c = drawFilteredToCanvas(img);
     const a = document.createElement("a");
     a.href = c.toDataURL("image/jpeg", 0.95);
     a.download = `background-filtered-${c.width}x${c.height}.jpg`;
@@ -1597,7 +1633,8 @@ function init() {
   el.filBright.oninput = () => { filt.brightness = Number(el.filBright.value); filt.preset = "custom"; renderFilter(); };
   el.filContrast.oninput = () => { filt.contrast = Number(el.filContrast.value); filt.preset = "custom"; renderFilter(); };
   el.filSat.oninput = () => { filt.saturate = Number(el.filSat.value); filt.preset = "custom"; renderFilter(); };
-  el.filterReset.onclick = () => applyFilterPreset("none");
+  el.filBlur.oninput = () => { filt.blur = Number(el.filBlur.value); renderFilter(); }; // blur is orthogonal to the colour preset
+  el.filterReset.onclick = clearFilter;
   el.filterDownload.onclick = downloadFiltered;
 
   // Subject placement guide
