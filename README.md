@@ -208,7 +208,7 @@ Then open **http://localhost:3016** in your browser.
 - **Region** — in Adjust, click **Mark region**, choose **Add / Replace / Remove**, draw a box, and Adjust.
 - **Reframe** — pick a new aspect ratio to outpaint the scene (great for 9:16 Shorts).
 - **Upscale** — bump a library image to 2K/4K with the **Upscale** action, or enlarge any file from your
-  computer via **Upscale a file** in the library header.
+  computer via **Upscale an image** in the library header.
 
 **Review & export**
 
