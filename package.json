@@ -1,6 +1,6 @@
 {
   "name": "background-studio",
-  "version": "0.1.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Generate custom background photos from text prompts and reference images for green-screen YouTube compositing, via Nano Banana Pro on OpenRouter.",
   "type": "module",
