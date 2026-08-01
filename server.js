@@ -435,7 +435,7 @@ app.use((err, _req, res, _next) => {
 
 app.listen(PORT, () => {
   console.log(`BackgroundStudio running at http://localhost:${PORT}`);
-  console.log(`Model: ${MODEL}`);
+  console.log(`Image model: ${MODEL}`);
   console.log(
     process.env.OPENROUTER_API_KEY
       ? "OpenRouter key: detected"

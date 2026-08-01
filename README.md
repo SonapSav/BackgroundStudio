@@ -95,7 +95,7 @@ through **[OpenRouter](https://openrouter.ai)**, so all you need is an OpenRoute
 
 - **Backend:** Node.js + Express (no build step)
 - **Frontend:** vanilla HTML / CSS / JavaScript
-- **Model:** `google/gemini-3-pro-image-preview` (Nano Banana Pro) via OpenRouter's Image API
+- **Image model:** `google/gemini-3-pro-image-preview` (Nano Banana Pro) via OpenRouter's Image API
 - **Storage:** generated images + metadata on local disk
 
 ---
