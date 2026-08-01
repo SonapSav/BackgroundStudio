@@ -24,9 +24,9 @@
 (chroma‑key) footage — the kind of custom backdrops YouTubers and video creators composite themselves
 into. Describe a scene with a guided **pill‑based prompt builder** (or free text) and generate at up to
 **4K**, then **edit** any result: adjust it with a prompt, draw a box to **add / replace / remove**
-objects, composite in an uploaded photo, or **reframe** it into a new aspect ratio (e.g. vertical for
-Shorts). Review edits with a **before/after slider** and a **subject‑placement guide**, and keep it all
-in a searchable, favouritable local **library**.
+objects, composite in an uploaded photo, **reframe** it into a new aspect ratio (e.g. vertical for
+Shorts), or **upscale** it to higher resolution. Review edits with a **before/after slider** and a
+**subject‑placement guide**, and keep it all in a searchable, favouritable local **library**.
 
 It runs on your own machine and talks to **Google's Nano Banana Pro** (`google/gemini-3-pro-image-preview`)
 through **[OpenRouter](https://openrouter.ai)**, so all you need is an OpenRouter API key with some credit.
@@ -54,6 +54,8 @@ through **[OpenRouter](https://openrouter.ai)**, so all you need is an OpenRoute
 - **Add objects** — upload a product/prop photo and composite it into an existing background.
 - **Reframe / outpaint** — extend a background into a new aspect ratio (e.g. 16:9 → 9:16 for Shorts)
   instead of regenerating.
+- **Upscale** — generatively re‑render an image at a higher resolution (2K / 4K) with enhanced detail;
+  works on a **library image or any file from your computer**, and the result is saved to your library.
 
 ### Review & organise
 - **Before/after slider** — compare any edit against the version it came from with a draggable divider.
@@ -188,6 +190,8 @@ Then open **http://localhost:3016** in your browser.
   something in.
 - **Region** — in Adjust, click **Mark region**, choose **Add / Replace / Remove**, draw a box, and Adjust.
 - **Reframe** — pick a new aspect ratio to outpaint the scene (great for 9:16 Shorts).
+- **Upscale** — bump a library image to 2K/4K with the **Upscale** action, or enlarge any file from your
+  computer via **Upscale a file** in the library header.
 
 **Review**
 
