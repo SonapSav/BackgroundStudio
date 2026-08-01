@@ -23,6 +23,7 @@ const ICONS = {
   expand: `<polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/>`,
   upload: `<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>`,
   video: `<path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/>`,
+  scan: `<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/>`,
 };
 const REFRAME_ASPECTS = ["16:9", "9:16", "1:1", "4:5"];
 // Supported output ratios; an arbitrary upload snaps to the nearest.
@@ -192,6 +193,7 @@ const el = {
   goBtn: $("goBtn"), goLabel: $("goLabel"), goIcon: $("goIcon"),
   promptOut: $("promptOut"), promptNote: $("promptNote"), enhanceToggle: $("enhanceToggle"),
   enhancedOut: $("enhancedOut"), enhancedField: $("enhancedField"),
+  describeBtn: $("describeBtn"), describeInput: $("describeInput"),
   modeBanner: $("modeBanner"),
   grid: $("grid"), libEmpty: $("libEmpty"), libCount: $("libCount"), refreshBtn: $("refreshBtn"),
   sortSel: $("sortSel"), perPageSel: $("perPageSel"), pagination: $("pagination"),
@@ -532,6 +534,25 @@ async function enhancePromptClient(source) {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Enhance failed.");
   return data.enhanced;
+}
+// Describe an uploaded image into a reusable prompt (drops it into the prompt box).
+function describeFromFile(file) {
+  const reader = new FileReader();
+  reader.onload = async () => {
+    el.describeBtn.disabled = true; el.previewBtn.disabled = true; el.goBtn.disabled = true;
+    el.genTitle.textContent = "Describing image"; el.genOverlay.hidden = false;
+    try {
+      const res = await fetch("/api/describe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: reader.result }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Describe failed.");
+      el.promptOut.value = data.prompt;
+      state.enhancedFrom = null; el.enhancedOut.value = ""; // fresh prompt → reset any enhancement
+      toast("Described — tweak it or hit Generate for variations.");
+    } catch (e) { toast(e.message, true); }
+    finally { el.describeBtn.disabled = false; el.previewBtn.disabled = false; el.goBtn.disabled = false; el.genOverlay.hidden = true; }
+  };
+  reader.onerror = () => toast("Couldn't read that image.", true);
+  reader.readAsDataURL(file);
 }
 function renderEnhanceField() { el.enhancedField.hidden = !el.enhanceToggle.checked; }
 async function preview() {
@@ -1340,6 +1361,9 @@ function init() {
   setMode("generate");
 
   el.keyingToggle.onchange = () => { state.keyingSafe = el.keyingToggle.checked; updateNote(); };
+  $("describeIcon").innerHTML = icon("scan", 15);
+  el.describeBtn.onclick = () => el.describeInput.click();
+  el.describeInput.onchange = () => { const f = el.describeInput.files[0]; if (f) describeFromFile(f); el.describeInput.value = ""; };
   $("enhanceIcon").innerHTML = icon("sparkles", 13);
   el.enhanceToggle.checked = prefGet("bgstudio.enhance") === "1";
   el.enhanceToggle.onchange = () => { prefSet("bgstudio.enhance", el.enhanceToggle.checked ? "1" : "0"); renderEnhanceField(); };

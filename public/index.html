@@ -88,6 +88,7 @@
     <div class="actionbar">
       <button class="btn" id="clearBtn" type="button" hidden>Cancel adjust</button>
       <button class="btn" id="resetBtn" type="button"><span id="resetIcon"></span> Reset pills</button>
+      <button class="btn" id="describeBtn" type="button" title="Upload an image to turn it into a prompt"><span id="describeIcon"></span> Describe an image</button>
       <button class="btn" id="previewBtn" type="button"><span id="eyeIcon"></span> Preview prompt</button>
       <button class="btn primary" id="goBtn" type="button"><span id="goIcon"></span><span id="goLabel">Generate</span></button>
     </div>
@@ -282,6 +283,7 @@
 </div>
 
 <input type="file" id="keySubjectInput" accept="image/*" hidden />
+<input type="file" id="describeInput" accept="image/*" hidden />
 
 <div class="exportmenu" id="exportMenu" hidden>
   <div class="exp-head">Download as</div>

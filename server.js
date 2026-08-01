@@ -3,7 +3,7 @@ import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { generateImage, enhancePrompt, MODEL } from "./server/openrouter.js";
+import { generateImage, enhancePrompt, describeImage, MODEL } from "./server/openrouter.js";
 import * as library from "./server/library.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -92,6 +92,18 @@ app.post("/api/enhance", async (req, res, next) => {
     if (!prompt || !prompt.trim()) return res.status(400).json({ error: "A prompt is required." });
     const enhanced = await enhancePrompt(prompt);
     res.json({ enhanced });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Describe an uploaded image as a reusable prompt.
+app.post("/api/describe", async (req, res, next) => {
+  try {
+    const { image } = req.body || {};
+    if (!image) return res.status(400).json({ error: "An image is required." });
+    const prompt = await describeImage(image);
+    res.json({ prompt });
   } catch (err) {
     next(err);
   }

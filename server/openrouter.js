@@ -49,6 +49,43 @@ export async function enhancePrompt(userPrompt) {
   return out.replace(/^["'\s]+|["'\s]+$/g, "");
 }
 
+// Look at an image and write a reusable background-scene prompt (uses the same multimodal model).
+export async function describeImage(imageDataUri) {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) { const e = new Error("OPENROUTER_API_KEY is not set."); e.code = "NO_API_KEY"; throw e; }
+  const model = process.env.DESCRIBE_MODEL || ENHANCE_MODEL;
+  const system =
+    "You are a prompt engineer for a photorealistic image model. Look at the provided image and write a " +
+    "single vivid, detailed prompt of 2-4 sentences that would generate a similar BACKGROUND scene. " +
+    "Describe the scene and setting, lighting and time of day, mood and colour palette, camera angle / lens " +
+    "and composition, and key materials and textures. Focus on the environment; do not describe or identify " +
+    "any specific person. Output ONLY the prompt — no preamble, quotes, labels, or explanation.";
+
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", "HTTP-Referer": "http://localhost", "X-Title": "BackgroundStudio" },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: [
+          { type: "text", text: "Describe this image as a reusable background-scene prompt." },
+          { type: "image_url", image_url: { url: imageDataUri } },
+        ] },
+      ],
+      temperature: 0.5,
+      max_tokens: 400,
+    }),
+  });
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch { const e = new Error("Describe returned non-JSON."); e.code = "BAD_RESPONSE"; throw e; }
+  if (!res.ok || data.error) { const e = new Error(data?.error?.message || "Describe failed."); e.code = "OPENROUTER_ERROR"; throw e; }
+  const out = data?.choices?.[0]?.message?.content?.trim();
+  if (!out) { const e = new Error("Describe returned an empty result."); e.code = "NO_TEXT"; throw e; }
+  return out.replace(/^["'\s]+|["'\s]+$/g, "");
+}
+
 // The prompt carries only creative direction now; size/ratio are real params.
 // The keying-safe steer keeps backgrounds off the chroma-key hues.
 export function composePrompt({ prompt, keyingSafe }) {
