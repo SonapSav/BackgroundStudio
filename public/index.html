@@ -96,7 +96,7 @@
   <!-- Editable assembled prompt -->
   <section class="panel">
     <div class="prompt-head">
-      <p class="microlabel">Prompt sent to Gemini <span class="hint narrow-hide">editable · combines your pills + text</span></p>
+      <p class="microlabel">Prompt <span class="hint narrow-hide">editable · combines your pills + text</span></p>
       <label class="switch" id="enhanceSwitch" title="Expand your prompt into a richer one before generating">
         <input type="checkbox" id="enhanceToggle" />
         <span class="track"><span class="knob"></span></span>
@@ -104,6 +104,10 @@
       </label>
     </div>
     <textarea id="promptOut" class="mono" placeholder="Pick some pills above and click “Preview prompt”, or just type your prompt directly here."></textarea>
+    <div class="enhanced-field" id="enhancedField" hidden>
+      <p class="microlabel">Enhanced prompt <span class="hint narrow-hide">expanded · sent to Gemini · editable</span></p>
+      <textarea id="enhancedOut" class="mono" placeholder="Click “Preview prompt” or “Generate” to expand your prompt into a detailed one…"></textarea>
+    </div>
     <div class="prompt-note hint" id="promptNote"></div>
   </section>
 

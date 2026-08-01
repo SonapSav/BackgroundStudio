@@ -165,7 +165,7 @@ const state = {
   keyingSafe: false,
   busy: false,
   balance: null,
-  enhancedText: null, // the last enhanced prompt, to avoid re-enhancing on re-generate
+  enhancedFrom: null, // the brief that produced the current enhanced text (re-enhance only when it changes)
   region: null, // { mode:'add'|'remove', bbox:{x,y,w,h}, positionLabel, maskDataUri }
   library: [],
   sort: "newest",
@@ -191,6 +191,7 @@ const el = {
   clearBtn: $("clearBtn"), resetBtn: $("resetBtn"), previewBtn: $("previewBtn"),
   goBtn: $("goBtn"), goLabel: $("goLabel"), goIcon: $("goIcon"),
   promptOut: $("promptOut"), promptNote: $("promptNote"), enhanceToggle: $("enhanceToggle"),
+  enhancedOut: $("enhancedOut"), enhancedField: $("enhancedField"),
   modeBanner: $("modeBanner"),
   grid: $("grid"), libEmpty: $("libEmpty"), libCount: $("libCount"), refreshBtn: $("refreshBtn"),
   sortSel: $("sortSel"), perPageSel: $("perPageSel"), pagination: $("pagination"),
@@ -530,18 +531,22 @@ async function enhancePromptClient(source) {
   if (!res.ok) throw new Error(data.error || "Enhance failed.");
   return data.enhanced;
 }
+function renderEnhanceField() { el.enhancedField.hidden = !el.enhanceToggle.checked; }
 async function preview() {
-  let p = composeFinalPrompt();
+  const p = composeFinalPrompt();
   if (!p) { toast("Pick some pills or type a prompt first.", true); return; }
+  el.promptOut.value = p; // reflect the merged brief
   if (el.enhanceToggle.checked) {
     el.previewBtn.disabled = true; el.goBtn.disabled = true;
     el.genTitle.textContent = "Enhancing prompt"; el.genOverlay.hidden = false;
-    try { p = await enhancePromptClient(p); state.enhancedText = p; el.promptOut.value = p; toast("Prompt enhanced — edit freely before generating."); }
-    catch (e) { toast(e.message, true); }
+    try {
+      const enhanced = await enhancePromptClient(p);
+      el.enhancedOut.value = enhanced; state.enhancedFrom = p; renderEnhanceField();
+      toast("Prompt enhanced — edit the enhanced version freely before generating.");
+    } catch (e) { toast(e.message, true); }
     finally { el.previewBtn.disabled = false; el.goBtn.disabled = false; el.genOverlay.hidden = true; }
     return;
   }
-  el.promptOut.value = p;
   toast("Prompt assembled — pills + your text combined. Edit freely before generating.");
 }
 async function go() {
@@ -558,14 +563,17 @@ async function go() {
     el.promptOut.focus();
     return;
   }
-  // Enhance the prompt first if the toggle is on (skip if it's already the enhanced text)
-  if (el.enhanceToggle.checked && prompt && prompt !== state.enhancedText) {
-    el.genTitle.textContent = "Enhancing prompt";
-    el.genOverlay.hidden = false;
-    try { prompt = await enhancePromptClient(prompt); state.enhancedText = prompt; }
-    catch { toast("Enhance failed — using your prompt as-is.", true); }
+  if (prompt) el.promptOut.value = prompt; // reflect the merged brief
+  // Enhance into the separate field if the toggle is on (re-enhance only when the brief changed)
+  if (el.enhanceToggle.checked && prompt) {
+    if (!el.enhancedOut.value.trim() || state.enhancedFrom !== prompt) {
+      el.genTitle.textContent = "Enhancing prompt";
+      el.genOverlay.hidden = false;
+      try { const enhanced = await enhancePromptClient(prompt); el.enhancedOut.value = enhanced; state.enhancedFrom = prompt; renderEnhanceField(); }
+      catch { toast("Enhance failed — using your prompt as-is.", true); }
+    }
+    prompt = el.enhancedOut.value.trim() || prompt; // the enhanced (possibly edited) prompt is what's sent
   }
-  el.promptOut.value = prompt; // reflect exactly what will be sent
 
   const count = state.count;
   const wasAdjust = state.mode === "adjust" && !!state.base;
@@ -609,6 +617,7 @@ async function go() {
   state.uploads = [];
   renderThumbs();
   el.promptOut.value = ""; // clear so pills+text don't accumulate on the next run
+  el.enhancedOut.value = ""; state.enhancedFrom = null; // reset the enhancement for the next prompt
   setMode("generate");
   state.page = 1; // jump to the page showing the newest results
   await loadLibrary();
@@ -1260,7 +1269,8 @@ function init() {
   el.keyingToggle.onchange = () => { state.keyingSafe = el.keyingToggle.checked; updateNote(); };
   $("enhanceIcon").innerHTML = icon("sparkles", 13);
   el.enhanceToggle.checked = prefGet("bgstudio.enhance") === "1";
-  el.enhanceToggle.onchange = () => prefSet("bgstudio.enhance", el.enhanceToggle.checked ? "1" : "0");
+  el.enhanceToggle.onchange = () => { prefSet("bgstudio.enhance", el.enhanceToggle.checked ? "1" : "0"); renderEnhanceField(); };
+  renderEnhanceField();
   $("diceIcon").innerHTML = icon("dice", 15);
   el.seedDice.onclick = () => { el.seedInput.value = String(Math.floor(Math.random() * 2147483647)); };
   el.previewBtn.onclick = preview;
