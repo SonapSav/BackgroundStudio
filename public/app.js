@@ -165,6 +165,7 @@ const state = {
   keyingSafe: false,
   busy: false,
   balance: null,
+  enhancedText: null, // the last enhanced prompt, to avoid re-enhancing on re-generate
   region: null, // { mode:'add'|'remove', bbox:{x,y,w,h}, positionLabel, maskDataUri }
   library: [],
   sort: "newest",
@@ -189,7 +190,7 @@ const el = {
   seedInput: $("seedInput"), seedDice: $("seedDice"),
   clearBtn: $("clearBtn"), resetBtn: $("resetBtn"), previewBtn: $("previewBtn"),
   goBtn: $("goBtn"), goLabel: $("goLabel"), goIcon: $("goIcon"),
-  promptOut: $("promptOut"), promptNote: $("promptNote"),
+  promptOut: $("promptOut"), promptNote: $("promptNote"), enhanceToggle: $("enhanceToggle"),
   modeBanner: $("modeBanner"),
   grid: $("grid"), libEmpty: $("libEmpty"), libCount: $("libCount"), refreshBtn: $("refreshBtn"),
   sortSel: $("sortSel"), perPageSel: $("perPageSel"), pagination: $("pagination"),
@@ -523,15 +524,29 @@ function composeFinalPrompt() {
   const [first, second] = state.mode === "adjust" ? [box, pills] : [pills, box];
   return `${endDot(first)} ${second}`;
 }
-function preview() {
-  const p = composeFinalPrompt();
+async function enhancePromptClient(source) {
+  const res = await fetch("/api/enhance", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: source }) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Enhance failed.");
+  return data.enhanced;
+}
+async function preview() {
+  let p = composeFinalPrompt();
   if (!p) { toast("Pick some pills or type a prompt first.", true); return; }
+  if (el.enhanceToggle.checked) {
+    el.previewBtn.disabled = true; el.goBtn.disabled = true;
+    el.genTitle.textContent = "Enhancing prompt"; el.genOverlay.hidden = false;
+    try { p = await enhancePromptClient(p); state.enhancedText = p; el.promptOut.value = p; toast("Prompt enhanced — edit freely before generating."); }
+    catch (e) { toast(e.message, true); }
+    finally { el.previewBtn.disabled = false; el.goBtn.disabled = false; el.genOverlay.hidden = true; }
+    return;
+  }
   el.promptOut.value = p;
   toast("Prompt assembled — pills + your text combined. Edit freely before generating.");
 }
 async function go() {
   if (state.busy) return;
-  const prompt = composeFinalPrompt();
+  let prompt = composeFinalPrompt();
   const region = state.mode === "adjust" ? state.region : null;
   const needsWhat = region && (region.mode === "add" || region.mode === "replace");
   const canProceedWithoutPrompt =
@@ -542,6 +557,13 @@ async function go() {
       : "Add a prompt — pick pills or type one.", true);
     el.promptOut.focus();
     return;
+  }
+  // Enhance the prompt first if the toggle is on (skip if it's already the enhanced text)
+  if (el.enhanceToggle.checked && prompt && prompt !== state.enhancedText) {
+    el.genTitle.textContent = "Enhancing prompt";
+    el.genOverlay.hidden = false;
+    try { prompt = await enhancePromptClient(prompt); state.enhancedText = prompt; }
+    catch { toast("Enhance failed — using your prompt as-is.", true); }
   }
   el.promptOut.value = prompt; // reflect exactly what will be sent
 
@@ -1236,6 +1258,9 @@ function init() {
   setMode("generate");
 
   el.keyingToggle.onchange = () => { state.keyingSafe = el.keyingToggle.checked; updateNote(); };
+  $("enhanceIcon").innerHTML = icon("sparkles", 13);
+  el.enhanceToggle.checked = prefGet("bgstudio.enhance") === "1";
+  el.enhanceToggle.onchange = () => prefSet("bgstudio.enhance", el.enhanceToggle.checked ? "1" : "0");
   $("diceIcon").innerHTML = icon("dice", 15);
   el.seedDice.onclick = () => { el.seedInput.value = String(Math.floor(Math.random() * 2147483647)); };
   el.previewBtn.onclick = preview;

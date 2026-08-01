@@ -9,6 +9,46 @@
 const IMAGES_URL = "https://openrouter.ai/api/v1/images";
 export const MODEL = "google/gemini-3-pro-image-preview"; // Nano Banana Pro
 
+// A cheap, fast text model used to expand a short brief into a rich image prompt.
+export const ENHANCE_MODEL = process.env.ENHANCE_MODEL || "google/gemini-2.5-flash";
+
+// Expand the user's brief into a vivid, detailed background-scene prompt.
+export async function enhancePrompt(userPrompt) {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) { const e = new Error("OPENROUTER_API_KEY is not set."); e.code = "NO_API_KEY"; throw e; }
+  const system =
+    "You are a prompt engineer for a photorealistic image model that generates BACKGROUND scenes to sit " +
+    "behind green-screen video. Rewrite the user's brief into a single vivid, detailed image prompt of " +
+    "2-4 sentences. Describe the scene and setting, lighting and time of day, mood and colour palette, " +
+    "camera angle / lens and composition, and key materials and textures. Keep it an empty background " +
+    "scene with natural negative space (do NOT add foreground people unless the brief explicitly asks). " +
+    "Do not mention resolution, aspect ratio, megapixels, or camera brand names. " +
+    "Output ONLY the rewritten prompt — no preamble, quotes, labels, or explanation.";
+
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "http://localhost",
+      "X-Title": "BackgroundStudio",
+    },
+    body: JSON.stringify({
+      model: ENHANCE_MODEL,
+      messages: [{ role: "system", content: system }, { role: "user", content: userPrompt.trim() }],
+      temperature: 0.7,
+      max_tokens: 400,
+    }),
+  });
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch { const e = new Error("Enhancer returned non-JSON."); e.code = "BAD_RESPONSE"; throw e; }
+  if (!res.ok || data.error) { const e = new Error(data?.error?.message || "Prompt enhancer failed."); e.code = "OPENROUTER_ERROR"; throw e; }
+  const out = data?.choices?.[0]?.message?.content?.trim();
+  if (!out) { const e = new Error("Enhancer returned an empty result."); e.code = "NO_TEXT"; throw e; }
+  return out.replace(/^["'\s]+|["'\s]+$/g, "");
+}
+
 // The prompt carries only creative direction now; size/ratio are real params.
 // The keying-safe steer keeps backgrounds off the chroma-key hues.
 export function composePrompt({ prompt, keyingSafe }) {

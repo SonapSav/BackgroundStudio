@@ -3,7 +3,7 @@ import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { generateImage, MODEL } from "./server/openrouter.js";
+import { generateImage, enhancePrompt, MODEL } from "./server/openrouter.js";
 import * as library from "./server/library.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -82,6 +82,18 @@ app.get("/api/balance", async (_req, res) => {
     res.json({ hasKey: true, remaining });
   } catch (err) {
     res.json({ hasKey: true, remaining: null, error: err.message });
+  }
+});
+
+// Expand a short prompt into a richer one via a cheap text model.
+app.post("/api/enhance", async (req, res, next) => {
+  try {
+    const { prompt } = req.body || {};
+    if (!prompt || !prompt.trim()) return res.status(400).json({ error: "A prompt is required." });
+    const enhanced = await enhancePrompt(prompt);
+    res.json({ enhanced });
+  } catch (err) {
+    next(err);
   }
 });
 
