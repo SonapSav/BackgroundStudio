@@ -225,7 +225,7 @@ const el = {
   filterToggle: $("filterToggle"), lbFilterCtrls: $("lbFilterCtrls"), filterPresets: $("filterPresets"),
   filBright: $("filBright"), filContrast: $("filContrast"), filSat: $("filSat"), filBlur: $("filBlur"),
   filVignette: $("filVignette"), filGrain: $("filGrain"), filterWarn: $("filterWarn"),
-  lbFilterCanvas: $("lbFilterCanvas"), filterReset: $("filterReset"), filterDownload: $("filterDownload"),
+  lbFilterCanvas: $("lbFilterCanvas"), filterReset: $("filterReset"), filterDownload: $("filterDownload"), filterSave: $("filterSave"),
   reframeModal: $("reframeModal"), reframeFrame: $("reframeFrame"), reframeImg: $("reframeImg"),
   reframeAspects: $("reframeAspects"), reframeRes: $("reframeRes"),
   reframeClose: $("reframeClose"), reframeCancel: $("reframeCancel"), reframeGo: $("reframeGo"),
@@ -780,7 +780,7 @@ function renderLibrary() {
     card.innerHTML = `
       <div class="shot">
         <button class="fav${r.favorite ? " on" : ""}" type="button" title="Favorite">${icon("star", 15)}</button>
-        ${r.parentId ? `<span class="lineage">${icon(r.kind === "reframe" ? "frame" : r.kind === "upscale" ? "expand" : "wand", 11)} ${r.kind === "reframe" ? "reframed" : r.kind === "upscale" ? "upscaled" : "adjusted"}</span>` : ""}
+        ${r.parentId ? `<span class="lineage">${icon(r.kind === "reframe" ? "frame" : r.kind === "upscale" ? "expand" : r.kind === "filter" ? "sliders" : "wand", 11)} ${r.kind === "reframe" ? "reframed" : r.kind === "upscale" ? "upscaled" : r.kind === "filter" ? "filtered" : "adjusted"}</span>` : ""}
         <span class="drag-handle" title="Drag onto the base slot to adjust">${icon("grip", 14)}</span>
         <img src="/library/${r.file}" alt="" loading="lazy" draggable="false" />
       </div>
@@ -1458,6 +1458,40 @@ function downloadFiltered() {
   img.onerror = () => toast("Couldn't load the image for export.", true);
   img.src = `/library/${lbRecord.file}`;
 }
+// A short, searchable label describing the grade (+ the source prompt).
+const PRESET_NAMES = { warm: "Warm", cool: "Cool", vivid: "Vivid", muted: "Muted", vintage: "Vintage", sepia: "Sepia", bw: "B&W", noir: "Noir", cine: "Cinema" };
+function gradeLabel() {
+  const parts = [];
+  if (PRESET_NAMES[filt.preset]) parts.push(PRESET_NAMES[filt.preset]);
+  if (filt.blur > 0) parts.push("blur");
+  if (filt.vignette > 0) parts.push("vignette");
+  if (filt.grain > 0) parts.push("grain");
+  const grade = parts.length ? parts.join(", ") : "adjusted";
+  const src = ((lbRecord && lbRecord.prompt) || "").trim();
+  return `Filtered · ${grade}${src ? ` — ${src}` : ""}`;
+}
+// Bake the grade at full resolution and save it as a new library item (no AI, no cost).
+async function saveFiltered() {
+  if (!gradeActive() || !lbRecord || el.filterSave.disabled) return;
+  const img = el.lightboxImg; // already loaded at natural resolution
+  const c = document.createElement("canvas");
+  c.width = img.naturalWidth; c.height = img.naturalHeight;
+  paintGrade(c.getContext("2d"), img, c.width, c.height);
+  const prev = el.filterSave.innerHTML;
+  el.filterSave.disabled = true;
+  el.filterSave.innerHTML = `${icon("library", 13)} Saving…`;
+  try {
+    const res = await fetch("/api/filtered", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sourceId: lbRecord.id, image: c.toDataURL("image/jpeg", 0.95), label: gradeLabel() }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Save failed.");
+    toast("Saved to library.");
+    await loadLibrary();
+  } catch (e) { toast(e.message, true); }
+  finally { el.filterSave.disabled = false; el.filterSave.innerHTML = prev; }
+}
 
 let lbRecord = null;
 function openLightbox(record) {
@@ -1706,6 +1740,8 @@ function init() {
   el.filGrain.oninput = () => { filt.grain = Number(el.filGrain.value); renderFilter(); };
   el.filterReset.onclick = clearFilter;
   el.filterDownload.onclick = downloadFiltered;
+  $("filterSaveIcon").innerHTML = icon("library", 13);
+  el.filterSave.onclick = saveFiltered;
 
   // Subject placement guide
   el.lbSubject.innerHTML = SUBJECT_SVG;

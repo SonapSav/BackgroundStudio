@@ -105,6 +105,14 @@ function cleanImage(value, field) {
   return value;
 }
 
+// Decode a base64 image data URI ("data:image/jpeg;base64,…") into bytes + media type.
+function decodeImageDataUri(value, field) {
+  const uri = cleanImage(value, field); // validates it's a data: URI (or throws 400)
+  const m = /^data:([^;,]+);base64,(.*)$/s.exec(uri);
+  if (!m) throw badRequest(`${field} must be a base64 image data URI.`);
+  return { bytes: Buffer.from(m[2], "base64"), mediaType: m[1] };
+}
+
 // Accept a number or numeric string ("123"); anything else -> undefined (random).
 function parseSeed(seed) {
   if (seed === undefined || seed === null || seed === "") return undefined;
@@ -382,6 +390,38 @@ app.post("/api/upscale", async (req, res, next) => {
       },
       result.bytes,
       result.mediaType
+    );
+
+    res.json(record);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Save a client-side filtered/graded image as a new library item (no AI, no cost).
+app.post("/api/filtered", async (req, res, next) => {
+  try {
+    const { sourceId, image, label } = req.body || {};
+    const source = await library.get(sourceId);
+    if (!source) return res.status(404).json({ error: "Source image not found." });
+    const { bytes, mediaType } = decodeImageDataUri(image, "image");
+
+    const record = await library.add(
+      {
+        kind: "filter",
+        prompt: (label || "Filtered background").toString().slice(0, 300),
+        seed: null,
+        parentId: source.id,
+        aspectRatio: source.aspectRatio || null,
+        resolution: source.resolution || null,
+        keyingSafe: false,
+        cost: 0,
+        model: null,
+        extraImageCount: 0,
+        edit: { mode: "filter" },
+      },
+      bytes,
+      mediaType
     );
 
     res.json(record);
