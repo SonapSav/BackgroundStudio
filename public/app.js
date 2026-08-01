@@ -25,6 +25,7 @@ const ICONS = {
   video: `<path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/>`,
   scan: `<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/>`,
   sliders: `<line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>`,
+  alert: `<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>`,
 };
 const REFRAME_ASPECTS = ["16:9", "9:16", "1:1", "4:5"];
 // Supported output ratios; an arbitrary upload snaps to the nearest.
@@ -223,7 +224,8 @@ const el = {
   keyFlip: $("keyFlip"), keyDownload: $("keyDownload"),
   filterToggle: $("filterToggle"), lbFilterCtrls: $("lbFilterCtrls"), filterPresets: $("filterPresets"),
   filBright: $("filBright"), filContrast: $("filContrast"), filSat: $("filSat"), filBlur: $("filBlur"),
-  filterReset: $("filterReset"), filterDownload: $("filterDownload"),
+  filVignette: $("filVignette"), filGrain: $("filGrain"), filterWarn: $("filterWarn"),
+  lbFilterCanvas: $("lbFilterCanvas"), filterReset: $("filterReset"), filterDownload: $("filterDownload"),
   reframeModal: $("reframeModal"), reframeFrame: $("reframeFrame"), reframeImg: $("reframeImg"),
   reframeAspects: $("reframeAspects"), reframeRes: $("reframeRes"),
   reframeClose: $("reframeClose"), reframeCancel: $("reframeCancel"), reframeGo: $("reframeGo"),
@@ -1195,8 +1197,9 @@ function renderGuide() {
   s.style.top = guide.y + "%";
   s.style.height = guide.h + "%";
   s.style.transform = `translateX(-50%)${guide.flip ? " scaleX(-1)" : ""}`;
+  updateStage();
 }
-function toggleGuide() { guide.on = !guide.on; if (guide.on) { cmp.on = false; renderCompare(); key.on = false; renderKey(); filt.on = false; renderFilter(); } renderGuide(); }
+function toggleGuide() { guide.on = !guide.on; if (guide.on) { cmp.on = false; renderCompare(); key.on = false; renderKey(); filt.panel = false; renderFilter(); } renderGuide(); }
 function setSubjectPos(pos) { guide.x = pos === "left" ? 28 : pos === "right" ? 72 : 50; renderGuide(); }
 
 /* Before/after compare (only for images that have a parent) */
@@ -1212,11 +1215,12 @@ function renderCompare() {
     el.lbBefore.style.clipPath = `inset(0 ${100 - cmp.pos}% 0 0)`;
     el.lbDivider.style.left = cmp.pos + "%";
   }
+  updateStage();
 }
 function toggleCompare() {
   if (!cmp.parentFile) { toast("No earlier version to compare.", true); return; }
   cmp.on = !cmp.on;
-  if (cmp.on) { guide.on = false; renderGuide(); key.on = false; renderKey(); filt.on = false; renderFilter(); el.lbBefore.src = `/library/${cmp.parentFile}`; cmp.pos = 50; }
+  if (cmp.on) { guide.on = false; renderGuide(); key.on = false; renderKey(); filt.panel = false; renderFilter(); el.lbBefore.src = `/library/${cmp.parentFile}`; cmp.pos = 50; }
   renderCompare();
 }
 /* ---- Live keying preview (chroma-key your green-screen shot over a background) ---- */
@@ -1248,11 +1252,8 @@ function rekey() {
 }
 function composeKey() {
   const c = el.lbKeyCanvas, ctx = c.getContext("2d"), bg = el.lightboxImg;
-  const natW = bg.naturalWidth || 1280, natH = bg.naturalHeight || 720;
-  const scale = Math.min((window.innerWidth * 0.9) / natW, (window.innerHeight * 0.78) / natH, 1);
-  c.width = Math.round(natW * scale); c.height = Math.round(natH * scale);
-  ctx.clearRect(0, 0, c.width, c.height);
-  ctx.drawImage(bg, 0, 0, c.width, c.height);
+  stageCanvasSize(c, bg.naturalWidth || 1280, bg.naturalHeight || 720);
+  paintGrade(ctx, bg, c.width, c.height); // the current grade (colour/blur/vignette/grain) flows onto the background
   if (key.keyed) {
     const subH = key.scale * c.height, subW = subH * (key.keyed.width / key.keyed.height);
     const left = key.x * c.width - subW / 2, top = key.y * c.height - subH;
@@ -1263,21 +1264,19 @@ function composeKey() {
   }
 }
 function renderKey() {
-  el.lbKeyCanvas.hidden = !key.on;
   el.lbKeyCtrls.hidden = !key.on;
   el.keyToggle.classList.toggle("active", key.on);
-  el.lightboxImg.style.display = key.on ? "none" : "";
   if (key.on) {
     // keying owns the stage — hide the guide + compare overlays
     el.lbOverlay.hidden = true;
     el.lbBefore.hidden = true; el.lbDivider.hidden = true; el.lbTagBefore.hidden = true; el.lbTagAfter.hidden = true;
     keyControls();
-    composeKey();
   }
+  updateStage(); // shows/repaints the key canvas (with the graded background) when key.on
 }
 function toggleKey() {
   key.on = !key.on;
-  if (key.on) { guide.on = false; renderGuide(); cmp.on = false; renderCompare(); filt.on = false; renderFilter(); }
+  if (key.on) { guide.on = false; renderGuide(); cmp.on = false; renderCompare(); filt.panel = false; renderFilter(); }
   renderKey();
   if (key.on && !key.subjectImg) el.keySubjectInput.click();
 }
@@ -1312,77 +1311,145 @@ const FILTER_PRESETS = {
   noir:    { brightness: 96,  contrast: 140, saturate: 100, sepia: 0,  grayscale: 100, hueRotate: 0 },
   cine:    { brightness: 101, contrast: 110, saturate: 120, sepia: 15, grayscale: 0,   hueRotate: -4 },
 };
-const filt = { on: false, preset: "none", brightness: 100, contrast: 100, saturate: 100, sepia: 0, grayscale: 0, hueRotate: 0, blur: 0 };
+const FILT_DEFAULT = { preset: "none", brightness: 100, contrast: 100, saturate: 100, sepia: 0, grayscale: 0, hueRotate: 0, blur: 0, vignette: 0, grain: 0 };
+const filt = { panel: false, ...FILT_DEFAULT };
+// True when the grade differs from the untouched image (drives whether we show the graded canvas at all).
+function gradeActive() {
+  return filt.brightness !== 100 || filt.contrast !== 100 || filt.saturate !== 100 ||
+    filt.sepia !== 0 || filt.grayscale !== 0 || filt.hueRotate !== 0 ||
+    filt.blur > 0 || filt.vignette > 0 || filt.grain > 0;
+}
 // Blur is an absolute px radius, so — unlike the per-pixel colour filters — it must scale to the surface
-// it's drawn on. We store blur as a slider value (0-100) and convert to px as a fraction of the image
-// width, using the DISPLAYED width for the live preview and the NATURAL width for the baked export, so
-// what you see on screen matches what you download.
-const MAX_BLUR_FRAC = 0.025; // slider 100 => 2.5% of image width
+// it's drawn on. The slider (0-100) maps to a fraction of image width, computed per-surface, so the live
+// preview (display size) and the baked export (natural size) look proportionally identical.
+const MAX_BLUR_FRAC = 0.025;
 function blurPxFor(f, width) { return (f.blur / 100) * MAX_BLUR_FRAC * width; }
-// The colour half of the string is identical for preview and bake; the blur px is passed in per-surface.
-function filterString(f, blurPx) {
-  const s = `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturate}%) sepia(${f.sepia}%) grayscale(${f.grayscale}%) hue-rotate(${f.hueRotate}deg)`;
-  return blurPx > 0 ? `${s} blur(${blurPx}px)` : s;
+function colorFilter(f) {
+  return `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturate}%) sepia(${f.sepia}%) grayscale(${f.grayscale}%) hue-rotate(${f.hueRotate}deg)`;
+}
+
+// --- The one pipeline: paint `src` into `ctx` at w×h with the whole grade baked in. Used by the live
+//     preview, the keying-preview background, AND the exported file, so all three always match. ---
+function paintColorBlur(ctx, src, w, h) {
+  const b = blurPxFor(filt, w);
+  if (b <= 0) { ctx.filter = colorFilter(filt); ctx.drawImage(src, 0, 0, w, h); ctx.filter = "none"; return; }
+  const sw = src.naturalWidth || src.width, sh = src.naturalHeight || src.height;
+  const M = Math.ceil(b * 3); // pad + replicate edges so blur samples real colour (no dark halo)
+  const pad = document.createElement("canvas");
+  pad.width = w + 2 * M; pad.height = h + 2 * M;
+  const p = pad.getContext("2d");
+  p.drawImage(src, M, M, w, h);
+  p.drawImage(src, 0, 0, sw, 1, M, 0, w, M);
+  p.drawImage(src, 0, sh - 1, sw, 1, M, M + h, w, M);
+  p.drawImage(src, 0, 0, 1, sh, 0, M, M, h);
+  p.drawImage(src, sw - 1, 0, 1, sh, M + w, M, M, h);
+  p.drawImage(src, 0, 0, 1, 1, 0, 0, M, M);
+  p.drawImage(src, sw - 1, 0, 1, 1, M + w, 0, M, M);
+  p.drawImage(src, 0, sh - 1, 1, 1, 0, M + h, M, M);
+  p.drawImage(src, sw - 1, sh - 1, 1, 1, M + w, M + h, M, M);
+  ctx.filter = `${colorFilter(filt)} blur(${b}px)`;
+  ctx.drawImage(pad, -M, -M);
+  ctx.filter = "none";
+}
+function drawVignette(ctx, w, h, amount) {
+  const a = (amount / 100) * 0.85;
+  const g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.28, w / 2, h / 2, Math.max(w, h) * 0.72);
+  g.addColorStop(0, "rgba(0,0,0,0)");
+  g.addColorStop(1, `rgba(0,0,0,${a})`);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+}
+function drawGrain(ctx, w, h, amount) {
+  const nw = Math.min(w, 600), nh = Math.max(1, Math.round(nw * h / w));
+  const noise = document.createElement("canvas"); noise.width = nw; noise.height = nh;
+  const nctx = noise.getContext("2d");
+  const id = nctx.createImageData(nw, nh), d = id.data, strength = (amount / 100) * 80;
+  for (let i = 0; i < d.length; i += 4) {
+    const v = 128 + (Math.random() - 0.5) * 2 * strength; // luminance noise, blended as 'overlay'
+    d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255;
+  }
+  nctx.putImageData(id, 0, 0);
+  const op = ctx.globalCompositeOperation, ga = ctx.globalAlpha;
+  ctx.globalCompositeOperation = "overlay"; ctx.globalAlpha = 0.5;
+  ctx.drawImage(noise, 0, 0, w, h);
+  ctx.globalCompositeOperation = op; ctx.globalAlpha = ga;
+}
+function paintGrade(ctx, src, w, h) {
+  ctx.clearRect(0, 0, w, h);
+  paintColorBlur(ctx, src, w, h);
+  if (filt.vignette > 0) drawVignette(ctx, w, h, filt.vignette);
+  if (filt.grain > 0) drawGrain(ctx, w, h, filt.grain);
+}
+// Fit a stage canvas to the viewport at the image's aspect (shared by keying + filter previews).
+function stageCanvasSize(canvas, natW, natH) {
+  const scale = Math.min((window.innerWidth * 0.9) / natW, (window.innerHeight * 0.78) / natH, 1);
+  canvas.width = Math.round(natW * scale); canvas.height = Math.round(natH * scale);
+}
+function renderFilterCanvas() {
+  const img = el.lightboxImg;
+  stageCanvasSize(el.lbFilterCanvas, img.naturalWidth || 1280, img.naturalHeight || 720);
+  paintGrade(el.lbFilterCanvas.getContext("2d"), img, el.lbFilterCanvas.width, el.lbFilterCanvas.height);
+}
+// Decide which element owns the lightbox stage: keying canvas, graded canvas, or the plain image.
+function updateStage() {
+  const showKey = key.on;
+  const showGraded = !showKey && !cmp.on && gradeActive();
+  el.lbKeyCanvas.hidden = !showKey;
+  el.lbFilterCanvas.hidden = !showGraded;
+  el.lightboxImg.style.display = (showKey || showGraded) ? "none" : "";
+  if (showKey) composeKey();
+  else if (showGraded) renderFilterCanvas();
+}
+// Warn when the (graded) image is heavy in chroma green/blue, which keys poorly.
+function checkKeyingSafe() {
+  const img = el.lightboxImg;
+  if (!img.naturalWidth) { el.filterWarn.hidden = true; return; }
+  const tw = 48, th = Math.max(1, Math.round(tw * img.naturalHeight / img.naturalWidth));
+  const t = document.createElement("canvas"); t.width = tw; t.height = th;
+  const tctx = t.getContext("2d");
+  paintGrade(tctx, img, tw, th);
+  const d = tctx.getImageData(0, 0, tw, th).data;
+  let risky = 0; const n = tw * th;
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], g = d[i + 1], b = d[i + 2];
+    if (g - Math.max(r, b) > 55 || b - Math.max(r, g) > 55) risky++;
+  }
+  el.filterWarn.hidden = (risky / n) < 0.1;
 }
 function renderFilter() {
-  el.lbFilterCtrls.hidden = !filt.on;
-  el.filterToggle.classList.toggle("active", filt.on);
-  if (filt.on) {
-    const dispW = el.lightboxImg.getBoundingClientRect().width || el.lightboxImg.naturalWidth || 1;
-    el.lightboxImg.style.filter = filterString(filt, blurPxFor(filt, dispW));
+  el.lbFilterCtrls.hidden = !filt.panel;
+  el.filterToggle.classList.toggle("active", filt.panel || gradeActive());
+  if (filt.panel) {
     el.filBright.value = String(filt.brightness);
     el.filContrast.value = String(filt.contrast);
     el.filSat.value = String(filt.saturate);
     el.filBlur.value = String(filt.blur);
+    el.filVignette.value = String(filt.vignette);
+    el.filGrain.value = String(filt.grain);
     el.filterPresets.querySelectorAll(".chip").forEach((b) => b.classList.toggle("active", b.dataset.fp === filt.preset));
-  } else {
-    el.lightboxImg.style.filter = "";
+    checkKeyingSafe();
   }
+  updateStage();
 }
-function resetFilterState() { Object.assign(filt, FILTER_PRESETS.none, { on: false, preset: "none", blur: 0 }); }
-// Reset button: clear the grade and the blur, but keep the panel open.
-function clearFilter() { Object.assign(filt, FILTER_PRESETS.none, { preset: "none", blur: 0 }); renderFilter(); }
+// Full reset (on lightbox open/close): clear the grade and close the panel.
+function resetFilterState() { Object.assign(filt, FILT_DEFAULT, { panel: false }); }
+// Reset button: clear the grade but keep the panel open.
+function clearFilter() { Object.assign(filt, FILT_DEFAULT); renderFilter(); }
 function toggleFilter() {
-  filt.on = !filt.on;
-  if (filt.on) { guide.on = false; renderGuide(); cmp.on = false; renderCompare(); key.on = false; renderKey(); }
+  filt.panel = !filt.panel;
+  if (filt.panel) { guide.on = false; renderGuide(); cmp.on = false; renderCompare(); key.on = false; renderKey(); }
   renderFilter();
 }
-function applyFilterPreset(name) {
+function applyFilterPreset(name) { // colour grade only — blur/vignette/grain are orthogonal
   Object.assign(filt, FILTER_PRESETS[name] || FILTER_PRESETS.none, { preset: name });
   renderFilter();
 }
-// Bake the current filter into a full-resolution canvas.
-function drawFilteredToCanvas(img) {
-  const w = img.naturalWidth, h = img.naturalHeight;
-  const out = document.createElement("canvas");
-  out.width = w; out.height = h;
-  const octx = out.getContext("2d");
-  const b = blurPxFor(filt, w);
-  if (b <= 0) { octx.filter = filterString(filt, 0); octx.drawImage(img, 0, 0); return out; }
-  // Pad + replicate the edge pixels outward so the blur samples real colour past the frame instead of
-  // transparency (which would flatten to a dark halo on JPEG). M covers the gaussian tail (~3× radius).
-  const M = Math.ceil(b * 3);
-  const pad = document.createElement("canvas");
-  pad.width = w + 2 * M; pad.height = h + 2 * M;
-  const p = pad.getContext("2d");
-  p.drawImage(img, M, M, w, h);                          // centre
-  p.drawImage(img, 0, 0, w, 1, M, 0, w, M);              // top edge stretched up
-  p.drawImage(img, 0, h - 1, w, 1, M, M + h, w, M);      // bottom edge stretched down
-  p.drawImage(img, 0, 0, 1, h, 0, M, M, h);              // left edge stretched left
-  p.drawImage(img, w - 1, 0, 1, h, M + w, M, M, h);      // right edge stretched right
-  p.drawImage(img, 0, 0, 1, 1, 0, 0, M, M);              // corners
-  p.drawImage(img, w - 1, 0, 1, 1, M + w, 0, M, M);
-  p.drawImage(img, 0, h - 1, 1, 1, 0, M + h, M, M);
-  p.drawImage(img, w - 1, h - 1, 1, 1, M + w, M + h, M, M);
-  octx.filter = filterString(filt, b);
-  octx.drawImage(pad, -M, -M);                           // blur, cropping the padding back off
-  return out;
-}
 function downloadFiltered() {
-  if (!filt.on || !lbRecord) return;
+  if (!gradeActive() || !lbRecord) return;
   const img = new Image();
   img.onload = () => {
-    const c = drawFilteredToCanvas(img);
+    const c = document.createElement("canvas");
+    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    paintGrade(c.getContext("2d"), img, c.width, c.height); // same pipeline, full resolution
     const a = document.createElement("a");
     a.href = c.toDataURL("image/jpeg", 0.95);
     a.download = `background-filtered-${c.width}x${c.height}.jpg`;
@@ -1628,12 +1695,15 @@ function init() {
   // Post-generation filters
   $("filterIcon").innerHTML = icon("sliders", 14);
   $("filterDownloadIcon").innerHTML = icon("download", 13);
+  $("filterWarnIcon").innerHTML = icon("alert", 13);
   el.filterToggle.onclick = toggleFilter;
   el.filterPresets.querySelectorAll(".chip").forEach((b) => (b.onclick = () => applyFilterPreset(b.dataset.fp)));
   el.filBright.oninput = () => { filt.brightness = Number(el.filBright.value); filt.preset = "custom"; renderFilter(); };
   el.filContrast.oninput = () => { filt.contrast = Number(el.filContrast.value); filt.preset = "custom"; renderFilter(); };
   el.filSat.oninput = () => { filt.saturate = Number(el.filSat.value); filt.preset = "custom"; renderFilter(); };
-  el.filBlur.oninput = () => { filt.blur = Number(el.filBlur.value); renderFilter(); }; // blur is orthogonal to the colour preset
+  el.filBlur.oninput = () => { filt.blur = Number(el.filBlur.value); renderFilter(); }; // blur/vignette/grain are orthogonal to the colour preset
+  el.filVignette.oninput = () => { filt.vignette = Number(el.filVignette.value); renderFilter(); };
+  el.filGrain.oninput = () => { filt.grain = Number(el.filGrain.value); renderFilter(); };
   el.filterReset.onclick = clearFilter;
   el.filterDownload.onclick = downloadFiltered;
 
