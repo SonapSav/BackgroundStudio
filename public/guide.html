@@ -91,7 +91,7 @@
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
       Background Studio
     </div>
-    <span class="g-ver">User Guide · v1.0.1</span>
+    <span class="g-ver">User Guide · v1.1.0</span>
   </div>
 </div>
 
@@ -107,10 +107,11 @@
       <a href="#generating">4 · Generating</a>
       <a href="#editing">5 · Editing an image</a>
       <a href="#reviewing">6 · Reviewing your shot</a>
-      <a href="#exporting">7 · Exporting</a>
-      <a href="#library">8 · The library</a>
-      <a href="#tips">9 · Tips &amp; good to know</a>
-      <a href="#shortcuts">10 · Shortcuts</a>
+      <a href="#filters">7 · Filters &amp; grading</a>
+      <a href="#exporting">8 · Exporting</a>
+      <a href="#library">9 · The library</a>
+      <a href="#tips">10 · Tips &amp; good to know</a>
+      <a href="#shortcuts">11 · Shortcuts</a>
     </nav>
   </aside>
 
@@ -298,9 +299,46 @@
         negative space fits your keyed subject — handy when you're planning composition before shooting.</p>
     </section>
 
+    <!-- ============ FILTERS ============ -->
+    <section class="g-sec" id="filters">
+      <h2><span class="g-num">7</span> Filters &amp; grading</h2>
+      <p>Open any image, click <span class="pill-ref">Filters</span>, and grade it right in the browser — no AI, no cost,
+        instant. Filters are <strong>non-destructive</strong>: the original is never changed, and everything resets when you
+        close the image. The <em>same</em> render drives the live preview, the keying preview, and whatever you export, so
+        what you see is exactly what you get.</p>
+
+      <h3>Presets</h3>
+      <p>One-tap looks: <strong>Warm, Cool, Vivid, Muted, Vintage, Sepia, B&amp;W, Noir,</strong> and <strong>Cinema</strong>
+        (plus <em>None</em>). A preset sets the colour grade; the sliders then fine-tune it.</p>
+
+      <h3>Adjustments</h3>
+      <ul>
+        <li><strong>Bright · Contrast · Saturation</strong> — the core colour tweaks.</li>
+        <li><strong>Blur</strong> — a soft out-of-focus / depth-of-field look, so a keyed subject pops off a defocused
+          background. It's scaled to the image, so the preview matches the export.</li>
+        <li><strong>Vignette</strong> — darken the edges to draw the eye inward.</li>
+        <li><strong>Grain</strong> — filmic texture.</li>
+      </ul>
+      <p>Blur, vignette, and grain are independent of the colour preset, so you can combine any grade with any of them.
+        <span class="pill-ref">Reset</span> clears everything.</p>
+
+      <h3>See it under your keyed shot</h3>
+      <p>Your grade <strong>flows into the Keying preview</strong> — switch to it and you'll see your keyed subject over the
+        <em>graded and blurred</em> background, i.e. the real composite. If a grade pushes the image heavy into chroma
+        green/blue (which keys poorly), a small <strong>warning</strong> appears.</p>
+
+      <h3>Keep the result</h3>
+      <ul>
+        <li><strong>Download</strong> — save a one-off graded JPEG at full resolution.</li>
+        <li><strong>Save to library</strong> — store the graded version as a <strong>new library item</strong> (original
+          untouched, no cost). It links back to its source, so you can compare before/after, and you can then adjust,
+          reframe, upscale, key, or export it like any other image.</li>
+      </ul>
+    </section>
+
     <!-- ============ EXPORTING ============ -->
     <section class="g-sec" id="exporting">
-      <h2><span class="g-num">7</span> Exporting</h2>
+      <h2><span class="g-num">8</span> Exporting</h2>
       <p>Click <span class="pill-ref">Download</span> on a card and choose a size:</p>
       <ul>
         <li><strong>Original</strong> — the file exactly as generated.</li>
@@ -315,7 +353,7 @@
 
     <!-- ============ LIBRARY ============ -->
     <section class="g-sec" id="library">
-      <h2><span class="g-num">8</span> The library</h2>
+      <h2><span class="g-num">9</span> The library</h2>
       <p>Everything you generate or edit is saved <strong>locally</strong> and listed newest-first. From here you can:</p>
       <ul>
         <li><strong>Search</strong> by prompt text.</li>
@@ -329,7 +367,7 @@
 
     <!-- ============ TIPS ============ -->
     <section class="g-sec" id="tips">
-      <h2><span class="g-num">9</span> Tips &amp; good to know</h2>
+      <h2><span class="g-num">10</span> Tips &amp; good to know</h2>
       <div class="g-card">
         <h3>Get clean keys</h3>
         <p>Turn <strong>Keying-safe</strong> on for anything you'll composite, then use the <strong>Keying preview</strong> to
@@ -356,7 +394,7 @@
 
     <!-- ============ SHORTCUTS ============ -->
     <section class="g-sec" id="shortcuts">
-      <h2><span class="g-num">10</span> Shortcuts &amp; interactions</h2>
+      <h2><span class="g-num">11</span> Shortcuts &amp; interactions</h2>
       <ul>
         <li><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Enter</kbd> in the prompt box — <strong>Generate</strong>.</li>
         <li><strong>Drag a library card</strong> onto the base slot to adjust it; drop onto the reference area to use it as a
@@ -370,7 +408,7 @@
     </section>
 
     <div class="g-foot">
-      Background Studio · User Guide · v1.0.1<br />
+      Background Studio · User Guide · v1.1.0<br />
       Images by Nano Banana Pro (Gemini 3 Pro Image) via OpenRouter. Runs locally on your machine.
     </div>
   </main>

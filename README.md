@@ -70,6 +70,10 @@ through **[OpenRouter](https://openrouter.ai)**, so all you need is an OpenRoute
 - **Before/after slider** — compare any edit against the version it came from with a draggable divider.
 - **Subject placement guide** — drop a draggable, resizable silhouette (with a rule‑of‑thirds grid) onto a
   background to check the negative space fits your keyed subject.
+- **Filters & grading** — grade any result in the browser (no AI, no cost): presets (Cinema, Sepia, Noir, Vintage…),
+  Bright/Contrast/Saturation, an out‑of‑focus **Blur** (depth of field), **Vignette**, and film **Grain**. The grade flows
+  into the keying preview (with a keying‑safe warning) and bakes into exports; **Download** it or **Save to library** as a
+  new, re‑editable item. Fully client‑side.
 - **Export presets** — download at exact broadcast sizes — **1080p** (1920×1080) or **4K UHD** (3840×2160)
   for the image's aspect ratio — or the Original; sizes larger than the source are disabled (Upscale first).
 - **Library** — **search** by prompt, **favourite** ⭐, sort (newest / oldest / cost), pagination (persists
@@ -209,6 +213,8 @@ Then open **http://localhost:3016** in your browser.
 
 - Click an image to open it, then use **Keying preview** (upload a green‑screen shot of yourself),
   **Compare** (on edited images), or the **Subject guide** to check placement.
+- **Filters** — click **Filters**, pick a preset and tune Bright/Contrast/Saturation/Blur/Vignette/Grain, then
+  **Download** the graded image or **Save to library** as a new item.
 - **Search**, **favourite**, and **sort** in the library.
 - **Download** → choose **Original**, **1080p**, or **4K UHD**, and drop the file behind your keyed footage.
 
@@ -250,7 +256,17 @@ The visual language ("studio console after dark" — a dark theme with an amber 
 
 ## 📋 Changelog
 
-### Audit & hardening — 2026-08-01
+### 1.1.0 — In‑browser filters & grading — 2026-08-01
+
+Non‑destructive image filters, entirely client‑side (no AI, no cost):
+
+- **Presets** — Warm, Cool, Vivid, Muted, Vintage, Sepia, B&W, Noir, Cinema — plus **Bright / Contrast / Saturation** sliders.
+- **Blur** (out‑of‑focus depth of field), **Vignette**, and film **Grain**, independent of the colour preset.
+- The grade **flows into the keying preview** — see your keyed subject over the graded/blurred background — with a
+  **keying‑safe warning** when the image drifts heavy into chroma green/blue.
+- **Download** a graded JPEG at full resolution, or **Save to library** as a new, re‑editable item (with before/after lineage).
+
+### 1.0.1 — Audit & hardening — 2026-08-01
 
 An end-to-end correctness and reliability pass (no new features):
 
