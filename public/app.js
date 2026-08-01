@@ -213,6 +213,7 @@ const el = {
   upscaleRes: $("upscaleRes"), upscaleDims: $("upscaleDims"), upscaleClose: $("upscaleClose"),
   upscaleCancel: $("upscaleCancel"), upscaleGo: $("upscaleGo"),
   upscaleFileBtn: $("upscaleFileBtn"), upscaleFileInput: $("upscaleFileInput"),
+  exportMenu: $("exportMenu"), expOrigDim: $("expOrigDim"), exp1080Dim: $("exp1080Dim"), expUhdDim: $("expUhdDim"),
   dropBar: $("dragDropBar"), dropOptAdjust: $("dropOptAdjust"), dropOptRef: $("dropOptRef"),
   genOverlay: $("genOverlay"), genTitle: $("genTitle"),
   regionRow: $("regionRow"), markRegionBtn: $("markRegionBtn"), regionChip: $("regionChip"),
@@ -791,7 +792,7 @@ function renderLibrary() {
     card.querySelector('[data-act="adjust"]').onclick = () => startAdjust(r);
     card.querySelector('[data-act="reframe"]').onclick = () => openReframe(r);
     card.querySelector('[data-act="upscale"]').onclick = () => openUpscaleFromCard(r);
-    card.querySelector('[data-act="download"]').onclick = () => downloadImage(r);
+    card.querySelector('[data-act="download"]').onclick = (e) => { e.stopPropagation(); openExportMenu(r, e.currentTarget); };
     card.querySelector('[data-act="delete"]').onclick = (e) => deleteImage(r, e.currentTarget);
     el.grid.appendChild(card);
   });
@@ -1045,6 +1046,67 @@ function downloadImage(record) {
   a.click();
   a.remove();
 }
+
+/* ---- Export presets (resize to exact standard video sizes on download) ---- */
+// Exact broadcast sizes per aspect ratio (drop-in-ready for a video timeline).
+const STD_SIZES = {
+  "16:9": { p1080: [1920, 1080], uhd: [3840, 2160] },
+  "9:16": { p1080: [1080, 1920], uhd: [2160, 3840] },
+  "1:1": { p1080: [1080, 1080], uhd: [2160, 2160] },
+  "4:5": { p1080: [1080, 1350], uhd: [2160, 2700] },
+  "5:4": { p1080: [1350, 1080], uhd: [2700, 2160] },
+  "4:3": { p1080: [1440, 1080], uhd: [2880, 2160] },
+  "3:4": { p1080: [1080, 1440], uhd: [2160, 2880] },
+  "21:9": { p1080: [2560, 1080], uhd: [5120, 2160] },
+};
+function exportDims(record, tier) {
+  const std = STD_SIZES[record.aspectRatio];
+  if (std) { const [w, h] = tier === "uhd" ? std.uhd : std.p1080; return { w, h }; }
+  // fallback: anchor the short edge from the actual pixels
+  const shortEdge = tier === "uhd" ? 2160 : 1080;
+  const w = record.width, h = record.height;
+  if (!w || !h) return null;
+  const ar = w / h;
+  return w >= h ? { w: Math.round(shortEdge * ar), h: shortEdge } : { w: shortEdge, h: Math.round(shortEdge / ar) };
+}
+let exportRecord = null;
+function openExportMenu(record, btn) {
+  exportRecord = record;
+  el.expOrigDim.textContent = record.width && record.height ? `${record.width}×${record.height}` : "";
+  const d1 = exportDims(record, "1080"), d4 = exportDims(record, "uhd");
+  el.exp1080Dim.textContent = d1 ? `${d1.w}×${d1.h}` : "";
+  el.expUhdDim.textContent = d4 ? `${d4.w}×${d4.h}` : "";
+  el.exportMenu.hidden = false;
+  const r = btn.getBoundingClientRect(), m = el.exportMenu.getBoundingClientRect();
+  let top = r.bottom + 6, left = r.left;
+  if (top + m.height > window.innerHeight - 8) top = r.top - m.height - 6; // flip up if no room below
+  left = Math.min(left, window.innerWidth - m.width - 8);
+  el.exportMenu.style.top = `${Math.max(8, top)}px`;
+  el.exportMenu.style.left = `${Math.max(8, left)}px`;
+}
+function closeExportMenu() { el.exportMenu.hidden = true; exportRecord = null; }
+function exportResized(record, tier) {
+  const d = exportDims(record, tier);
+  if (!d) { downloadImage(record); return; }
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement("canvas");
+    c.width = d.w; c.height = d.h;
+    const ctx = c.getContext("2d");
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+    // COVER: fill the exact target, centre-cropping the small aspect difference (no distortion)
+    const sAR = img.naturalWidth / img.naturalHeight, tAR = d.w / d.h;
+    let dw, dh;
+    if (sAR > tAR) { dh = d.h; dw = Math.round(d.h * sAR); } else { dw = d.w; dh = Math.round(d.w / sAR); }
+    ctx.drawImage(img, Math.round((d.w - dw) / 2), Math.round((d.h - dh) / 2), dw, dh);
+    const a = document.createElement("a");
+    a.href = c.toDataURL("image/jpeg", 0.95);
+    a.download = `background-${d.w}x${d.h}.jpg`;
+    a.click();
+  };
+  img.onerror = () => toast("Couldn't load the image for export.", true);
+  img.src = `/library/${record.file}`;
+}
 async function deleteImage(record, btn) {
   if (btn.dataset.confirm !== "1") {
     btn.dataset.confirm = "1";
@@ -1289,6 +1351,13 @@ function init() {
   el.perPageSel.value = String(state.perPage);
   el.sortSel.onchange = () => { state.sort = el.sortSel.value; prefSet("bgstudio.sort", state.sort); state.page = 1; renderLibrary(); };
   el.perPageSel.onchange = () => { state.perPage = Number(el.perPageSel.value); prefSet("bgstudio.perPage", String(state.perPage)); state.page = 1; renderLibrary(); };
+
+  // Export menu (download size presets)
+  el.exportMenu.querySelector('[data-exp="orig"]').onclick = () => { if (exportRecord) downloadImage(exportRecord); closeExportMenu(); };
+  el.exportMenu.querySelector('[data-exp="1080"]').onclick = () => { if (exportRecord) exportResized(exportRecord, "1080"); closeExportMenu(); };
+  el.exportMenu.querySelector('[data-exp="uhd"]').onclick = () => { if (exportRecord) exportResized(exportRecord, "uhd"); closeExportMenu(); };
+  document.addEventListener("pointerdown", (e) => { if (!el.exportMenu.hidden && !el.exportMenu.contains(e.target) && !e.target.closest('[data-act="download"]')) closeExportMenu(); });
+  window.addEventListener("scroll", () => { if (!el.exportMenu.hidden) closeExportMenu(); }, true);
 
   $("reframeGoIcon").innerHTML = icon("frame", 15);
   el.reframeClose.onclick = closeReframe;
