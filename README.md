@@ -25,8 +25,9 @@
 into. Describe a scene with a guided **pill‑based prompt builder** (or free text) and generate at up to
 **4K**, then **edit** any result: adjust it with a prompt, draw a box to **add / replace / remove**
 objects, composite in an uploaded photo, **reframe** it into a new aspect ratio (e.g. vertical for
-Shorts), or **upscale** it to higher resolution. Review edits with a **before/after slider** and a
-**subject‑placement guide**, and keep it all in a searchable, favouritable local **library**.
+Shorts), or **upscale** it to higher resolution. Then **preview yourself over it** with an in‑browser
+green‑screen keyer, compare edits with a **before/after slider**, and **export at exact broadcast sizes**
+(1080p / 4K UHD) — all kept in a searchable, favouritable local **library**.
 
 It runs on your own machine and talks to **Google's Nano Banana Pro** (`google/gemini-3-pro-image-preview`)
 through **[OpenRouter](https://openrouter.ai)**, so all you need is an OpenRouter API key with some credit.
@@ -45,6 +46,8 @@ through **[OpenRouter](https://openrouter.ai)**, so all you need is an OpenRoute
 - **Batch** — generate 1–4 variations per run, in parallel.
 - **Seed control** — leave blank for random, or set/reuse a seed to reproduce a look; every card shows its
   seed (click to reuse it).
+- **Prompt enhancer** — a toggle that expands your brief into a rich, detailed background‑scene prompt
+  (via a cheap text model) in a separate, editable field, before generating.
 
 ### Edit
 - **Adjust** any library image with a new prompt — click **Adjust**, or drag a card onto the base slot
@@ -58,9 +61,14 @@ through **[OpenRouter](https://openrouter.ai)**, so all you need is an OpenRoute
   works on a **library image or any file from your computer**, and the result is saved to your library.
 
 ### Review & organise
+- **Live keying preview** — upload a green‑screen frame of yourself, chroma‑key it in the browser, and
+  composite it over any background to preview the real shot: pick green/blue, tune the key & edge, drag,
+  scale, flip, and save the composite as a PNG. Fully client‑side, no API cost.
 - **Before/after slider** — compare any edit against the version it came from with a draggable divider.
 - **Subject placement guide** — drop a draggable, resizable silhouette (with a rule‑of‑thirds grid) onto a
   background to check the negative space fits your keyed subject.
+- **Export presets** — download at exact broadcast sizes — **1080p** (1920×1080) or **4K UHD** (3840×2160)
+  for the image's aspect ratio — or the Original; sizes larger than the source are disabled (Upscale first).
 - **Library** — **search** by prompt, **favourite** ⭐, sort (newest / oldest / cost), pagination (persists
   across refreshes), per‑image metadata (ratio · tier · dimensions · megapixels · cost · seed), one‑click
   prompt copy, download, and delete.
@@ -180,7 +188,8 @@ Then open **http://localhost:3016** in your browser.
 
 **Generate**
 
-1. Pick pills (or type freely); optionally **Preview prompt** to see and edit the merged prompt.
+1. Pick pills (or type freely); optionally flip on **Enhance prompt** to expand your brief, and
+   **Preview prompt** to see and edit the result.
 2. Set **aspect ratio**, **resolution**, **image count**, **seed**, and **keying‑safe**.
 3. Hit **Generate** — results land in the library.
 
@@ -193,11 +202,12 @@ Then open **http://localhost:3016** in your browser.
 - **Upscale** — bump a library image to 2K/4K with the **Upscale** action, or enlarge any file from your
   computer via **Upscale a file** in the library header.
 
-**Review**
+**Review & export**
 
-- Click an image to open it; use **Compare** (on edited images) and the **Subject guide** to check placement.
-- **Search**, **favourite**, and **sort** in the library. **Download** finished backgrounds and drop them
-  behind your keyed footage.
+- Click an image to open it, then use **Keying preview** (upload a green‑screen shot of yourself),
+  **Compare** (on edited images), or the **Subject guide** to check placement.
+- **Search**, **favourite**, and **sort** in the library.
+- **Download** → choose **Original**, **1080p**, or **4K UHD**, and drop the file behind your keyed footage.
 
 ---
 
@@ -207,6 +217,7 @@ Then open **http://localhost:3016** in your browser.
 | --- | --- | --- | --- |
 | `OPENROUTER_API_KEY` | Yes | — | Your OpenRouter API key. |
 | `PORT` | No | `3016` | Port the local server listens on. |
+| `ENHANCE_MODEL` | No | `google/gemini-2.5-flash` | Cheap text model used by the **Enhance prompt** toggle. |
 
 ---
 
