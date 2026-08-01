@@ -38,7 +38,14 @@ async function writeIndex(records) {
   // half-written / truncated library.json.
   const tmp = `${INDEX_FILE}.${crypto.randomUUID()}.tmp`;
   await fs.writeFile(tmp, JSON.stringify(records, null, 2), "utf8");
-  await fs.rename(tmp, INDEX_FILE);
+  try {
+    await fs.rename(tmp, INDEX_FILE);
+  } catch (err) {
+    // On Windows a rename can fail (EPERM/EBUSY) if a reader holds the file open;
+    // don't leave the temp file behind.
+    await fs.unlink(tmp).catch(() => {});
+    throw err;
+  }
 }
 
 // Newest first.

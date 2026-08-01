@@ -604,6 +604,10 @@ async function go() {
     return;
   }
   if (prompt) el.promptOut.value = prompt; // reflect the merged brief
+  // Claim the busy flag now — before the enhance await below — so a Ctrl+Enter or
+  // rapid re-click can't re-enter and fire a second enhance/generation. setBusy(false)
+  // at the end clears it on every path.
+  state.busy = true;
   // Enhance into the separate field if the toggle is on (re-enhance only when the brief changed)
   if (el.enhanceToggle.checked && prompt) {
     if (!el.enhancedOut.value.trim() || state.enhancedFrom !== prompt) {
