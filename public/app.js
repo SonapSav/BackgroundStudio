@@ -190,6 +190,7 @@ const state = {
   favOnly: false,
   sel: {},            // { groupKey: Set(labels) }
   text: {},           // { sceneText, styleText, extraText }
+  footage: { on: false, still: null, dims: null, mode: "Composite", space: "Either" },
 };
 Object.keys(PILLS).forEach((k) => { state.sel[k] = new Set(); });
 
@@ -209,6 +210,11 @@ const el = {
   enhancedOut: $("enhancedOut"), enhancedField: $("enhancedField"),
   describeBtn: $("describeBtn"), describeInput: $("describeInput"),
   modeBanner: $("modeBanner"),
+  footageField: $("footageField"), footageToggle: $("footageToggle"), footageBody: $("footageBody"),
+  footageDrop: $("footageDrop"), footageDropText: $("footageDropText"), footageInput: $("footageInput"),
+  footageStill: $("footageStill"), footageModeChips: $("footageModeChips"),
+  footageSpaceCtrl: $("footageSpaceCtrl"), footageSpaceChips: $("footageSpaceChips"), footageHint: $("footageHint"),
+  refField: $("refField"),
   grid: $("grid"), libEmpty: $("libEmpty"), libCount: $("libCount"), refreshBtn: $("refreshBtn"),
   sortSel: $("sortSel"), perPageSel: $("perPageSel"), pagination: $("pagination"),
   librarySearch: $("librarySearch"), favFilter: $("favFilter"),
@@ -221,7 +227,7 @@ const el = {
   keyToggle: $("keyToggle"), lbKeyCanvas: $("lbKeyCanvas"), lbKeyCtrls: $("lbKeyCtrls"),
   keyUploadBtn: $("keyUploadBtn"), keyUploadLabel: $("keyUploadLabel"), keySubjectInput: $("keySubjectInput"),
   keyColorChips: $("keyColorChips"), keyTol: $("keyTol"), keySoft: $("keySoft"), keyScale: $("keyScale"),
-  keyFlip: $("keyFlip"), keyDownload: $("keyDownload"),
+  keyFlip: $("keyFlip"), keyDownload: $("keyDownload"), keyLibSave: $("keyLibSave"),
   filterToggle: $("filterToggle"), lbFilterCtrls: $("lbFilterCtrls"), filterPresets: $("filterPresets"),
   filBright: $("filBright"), filContrast: $("filContrast"), filSat: $("filSat"), filBlur: $("filBlur"),
   filVignette: $("filVignette"), filGrain: $("filGrain"), filterWarn: $("filterWarn"),
@@ -515,6 +521,94 @@ function setMode(mode, base = null) {
   }
 }
 
+/* ---- Match my footage (outpaint a scene from a green-screen still) ---- */
+function imageDims(uri) {
+  return new Promise((resolve) => {
+    const im = new Image();
+    im.onload = () => resolve({ w: im.naturalWidth, h: im.naturalHeight });
+    im.onerror = () => resolve(null);
+    im.src = uri;
+  });
+}
+async function loadFootageStill(file) {
+  try {
+    const uri = await fileToDataUri(file);
+    state.footage.still = uri;
+    state.footage.dims = await imageDims(uri);
+    renderFootage();
+  } catch { toast("Couldn't read that image.", true); }
+}
+function footageHintText() {
+  return state.footage.mode === "Plate"
+    ? "Builds an empty background matched to your still's light & perspective (no people), with room left for you. Open it and Keying preview auto-loads your still so you can see the fit."
+    : "Keeps you and paints the scene around you (no other people) — a finished composite still, great for thumbnails.";
+}
+function renderFootage() {
+  const on = state.footage.on;
+  el.footageToggle.checked = on;
+  el.footageBody.hidden = !on;
+  el.baseField.hidden = on;   // footage supersedes the normal generate/adjust inputs
+  el.refField.hidden = on;
+  if (on && state.mode === "adjust") setMode("generate");
+
+  buildChips(el.footageModeChips, ["Composite", "Plate"], () => state.footage.mode, (v) => { state.footage.mode = v; renderFootage(); });
+  el.footageSpaceCtrl.hidden = state.footage.mode !== "Plate";
+  buildChips(el.footageSpaceChips, ["Left", "Center", "Right", "Either"], () => state.footage.space, (v) => { state.footage.space = v; });
+  el.footageHint.textContent = on ? footageHintText() : "";
+
+  if (state.footage.still) {
+    el.footageDrop.hidden = true;
+    el.footageStill.hidden = false;
+    el.footageStill.innerHTML = `<img src="${state.footage.still}" alt="" /><button class="x" type="button" title="Remove">✕</button>`;
+    el.footageStill.querySelector(".x").onclick = () => { state.footage.still = null; state.footage.dims = null; renderFootage(); };
+  } else {
+    el.footageDrop.hidden = false;
+    el.footageStill.hidden = true;
+    el.footageStill.innerHTML = "";
+  }
+  if (!state.busy) el.goLabel.textContent = on ? (state.footage.mode === "Plate" ? "Build plate" : "Composite") : (state.mode === "adjust" ? "Adjust" : "Generate");
+  el.goIcon.innerHTML = on ? icon("video", 15) : icon(state.mode === "adjust" ? "wand" : "sparkles", 15);
+}
+function buildFootagePrompt(scene, isPlate, space) {
+  scene = (scene || "").replace(/[.\s]+$/, ""); // avoid a double period before the next sentence
+  if (isPlate) {
+    const where = { Left: "the left side of the frame", Center: "the central area", Right: "the right side of the frame", Either: "the central and lower-central area" }[space] || "the central area";
+    return `Generate a photorealistic, empty scene: ${scene}. IMPORTANT: no people, no person anywhere — a completely empty background. Use the attached photo ONLY as a reference for the lighting direction, colour temperature, camera height and perspective; do NOT copy or include the person from it. Leave ${where} open and uncluttered so a presenter can be composited in front. Cinematic, shallow depth of field.`;
+  }
+  return `The attached image is a person shot on a green screen. Replace ONLY the green background with: ${scene}. Keep the person completely unchanged — identical face, expression, hair, glasses, clothing, accessories, hands, pose, scale and position. Do NOT add any other people and do NOT duplicate the person. Match the new scene's lighting direction, colour temperature and perspective to the subject so the composite looks natural. Photorealistic, shallow depth of field.`;
+}
+async function goFootage() {
+  if (state.busy) return;
+  if (!state.footage.still) { toast("Upload a green-screen still first.", true); return; }
+  const scene = composeFinalPrompt();
+  if (!scene) { toast("Describe the scene — pick pills or type a prompt.", true); el.promptOut.focus(); return; }
+  const isPlate = state.footage.mode === "Plate";
+  const prompt = buildFootagePrompt(scene, isPlate, state.footage.space);
+  const aspect = state.footage.dims ? snapAspect(state.footage.dims.w, state.footage.dims.h) : state.aspectRatio;
+  const seedRaw = el.seedInput.value.trim();
+  const ps = parseInt(seedRaw, 10);
+  const seed = seedRaw !== "" && Number.isFinite(ps) ? ps : Math.floor(Math.random() * 2147483647);
+
+  setBusy(true, 0, 1);
+  el.genTitle.textContent = isPlate ? "Building background plate" : "Compositing you into the scene";
+  let ok = false, spent = 0, errMsg = null;
+  try {
+    const res = await fetch("/api/generate", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt, referenceImages: [state.footage.still], aspectRatio: aspect, resolution: state.resolution, keyingSafe: false, seed }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Generation failed.");
+    ok = true; if (typeof data.cost === "number") spent = data.cost;
+  } catch (e) { errMsg = e.message; }
+
+  state.page = 1;
+  await loadLibrary();
+  if (ok) { applySpend(spent); setTimeout(loadBalance, 6000); }
+  setBusy(false);
+  toast(ok ? (isPlate ? "Plate saved — open it to preview yourself over it." : "Composite saved to the library.") : (errMsg || "Generation failed."), !ok);
+}
+
 /* ---- Uploads ---- */
 async function addFiles(fileList) {
   const files = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
@@ -599,6 +693,7 @@ async function preview() {
   toast("Prompt assembled — pills + your text combined. Edit freely before generating.");
 }
 async function go() {
+  if (state.footage.on) { goFootage(); return; }
   if (state.busy) return;
   let prompt = composeFinalPrompt();
   const region = state.mode === "adjust" ? state.region : null;
@@ -688,7 +783,9 @@ function setBusy(b, done = 0, total = 0) {
   el.goBtn.disabled = b;
   el.previewBtn.disabled = b;
   el.describeBtn.disabled = b;
-  el.goLabel.textContent = b ? "Working…" : (state.mode === "adjust" ? "Adjust" : "Generate");
+  el.goLabel.textContent = b ? "Working…"
+    : (state.footage.on ? (state.footage.mode === "Plate" ? "Build plate" : "Composite")
+      : (state.mode === "adjust" ? "Adjust" : "Generate"));
   if (b) {
     const base = state.mode === "adjust" ? "Adjusting" : "Generating";
     el.genTitle.textContent = total > 1 ? `${base} ${done} / ${total}` : base;
@@ -783,7 +880,7 @@ function renderLibrary() {
     card.innerHTML = `
       <div class="shot">
         <button class="fav${r.favorite ? " on" : ""}" type="button" title="Favorite">${icon("star", 15)}</button>
-        ${r.parentId ? `<span class="lineage">${icon(r.kind === "reframe" ? "frame" : r.kind === "upscale" ? "expand" : r.kind === "filter" ? "sliders" : "wand", 11)} ${r.kind === "reframe" ? "reframed" : r.kind === "upscale" ? "upscaled" : r.kind === "filter" ? "filtered" : "adjusted"}</span>` : ""}
+        ${r.parentId ? `<span class="lineage">${icon(r.kind === "reframe" ? "frame" : r.kind === "upscale" ? "expand" : r.kind === "filter" ? "sliders" : r.kind === "composite" ? "video" : "wand", 11)} ${r.kind === "reframe" ? "reframed" : r.kind === "upscale" ? "upscaled" : r.kind === "filter" ? "filtered" : r.kind === "composite" ? "composite" : "adjusted"}</span>` : ""}
         <span class="drag-handle" title="Drag onto the base slot to adjust">${icon("grip", 14)}</span>
         <img src="/library/${r.file}" alt="" loading="lazy" draggable="false" />
       </div>
@@ -1289,18 +1386,45 @@ function rekey() {
   octx.putImageData(id, 0, 0);
   key.keyed = oc;
 }
-function composeKey() {
-  const c = el.lbKeyCanvas, ctx = c.getContext("2d"), bg = el.lightboxImg;
-  stageCanvasSize(c, bg.naturalWidth || 1280, bg.naturalHeight || 720);
-  paintGrade(ctx, bg, c.width, c.height); // the current grade (colour/blur/vignette/grain) flows onto the background
+// Draw the graded background + the keyed subject into ctx at w×h (used for the live canvas and full-res save).
+function paintKeyComposite(ctx, w, h) {
+  paintGrade(ctx, el.lightboxImg, w, h); // graded background (paintGrade clears first)
   if (key.keyed) {
-    const subH = key.scale * c.height, subW = subH * (key.keyed.width / key.keyed.height);
-    const left = key.x * c.width - subW / 2, top = key.y * c.height - subH;
+    const subH = key.scale * h, subW = subH * (key.keyed.width / key.keyed.height);
+    const left = key.x * w - subW / 2, top = key.y * h - subH;
     ctx.save();
     if (key.flip) { ctx.translate(left + subW, top); ctx.scale(-1, 1); ctx.drawImage(key.keyed, 0, 0, subW, subH); }
     else ctx.drawImage(key.keyed, left, top, subW, subH);
     ctx.restore();
   }
+}
+function composeKey() {
+  const c = el.lbKeyCanvas, bg = el.lightboxImg;
+  stageCanvasSize(c, bg.naturalWidth || 1280, bg.naturalHeight || 720);
+  paintKeyComposite(c.getContext("2d"), c.width, c.height);
+}
+// Save the keyed composite as a new library item (full resolution), lineage to the background.
+async function saveKeyComposite() {
+  if (!key.on || !lbRecord) return;
+  if (!key.keyed) { toast("Upload your green-screen shot first.", true); return; }
+  const bg = el.lightboxImg;
+  const c = document.createElement("canvas");
+  c.width = bg.naturalWidth || 1280; c.height = bg.naturalHeight || 720;
+  paintKeyComposite(c.getContext("2d"), c.width, c.height);
+  const prev = el.keyLibSave.innerHTML;
+  el.keyLibSave.disabled = true;
+  el.keyLibSave.innerHTML = `${icon("library", 13)} Saving…`;
+  try {
+    const res = await fetch("/api/filtered", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sourceId: lbRecord.id, image: c.toDataURL("image/jpeg", 0.95), kind: "composite", label: `Composite over ${(lbRecord.prompt || "background").slice(0, 60)}` }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Save failed.");
+    toast("Composite saved to the library.");
+    await loadLibrary();
+  } catch (e) { toast(e.message, true); }
+  finally { el.keyLibSave.disabled = false; el.keyLibSave.innerHTML = prev; }
 }
 function renderKey() {
   el.lbKeyCtrls.hidden = !key.on;
@@ -1317,18 +1441,20 @@ function toggleKey() {
   key.on = !key.on;
   if (key.on) { guide.on = false; renderGuide(); cmp.on = false; renderCompare(); filt.panel = false; renderFilter(); }
   renderKey();
-  if (key.on && !key.subjectImg) el.keySubjectInput.click();
+  // If a footage still is loaded this session, key it in automatically ("preview me over it").
+  if (key.on && !key.subjectImg) {
+    if (state.footage.still) loadKeySubjectDataUri(state.footage.still);
+    else el.keySubjectInput.click();
+  }
 }
+function useKeySubjectImg(img) { key.subjectImg = img; rekey(); key.on = true; renderKey(); }
 function loadKeySubject(file) {
   const reader = new FileReader();
-  reader.onload = () => {
-    const img = new Image();
-    img.onload = () => { key.subjectImg = img; rekey(); key.on = true; renderKey(); };
-    img.src = reader.result;
-  };
+  reader.onload = () => { const img = new Image(); img.onload = () => useKeySubjectImg(img); img.src = reader.result; };
   reader.onerror = () => toast("Couldn't read that image.", true);
   reader.readAsDataURL(file);
 }
+function loadKeySubjectDataUri(uri) { const img = new Image(); img.onload = () => useKeySubjectImg(img); img.src = uri; }
 function downloadKeyPreview() {
   if (!key.on) return;
   const a = document.createElement("a");
@@ -1661,6 +1787,15 @@ function init() {
   $("describeIcon").innerHTML = icon("scan", 15);
   el.describeBtn.onclick = () => el.describeInput.click();
   el.describeInput.onchange = () => { const f = el.describeInput.files[0]; if (f) describeFromFile(f); el.describeInput.value = ""; };
+
+  // Match my footage
+  el.footageToggle.onchange = () => { state.footage.on = el.footageToggle.checked; renderFootage(); };
+  el.footageDrop.onclick = () => el.footageInput.click();
+  el.footageDrop.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); el.footageInput.click(); } };
+  el.footageInput.onchange = () => { const f = el.footageInput.files[0]; if (f) loadFootageStill(f); el.footageInput.value = ""; };
+  el.footageDrop.addEventListener("dragover", (e) => e.preventDefault());
+  el.footageDrop.addEventListener("drop", (e) => { e.preventDefault(); const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) loadFootageStill(f); });
+  renderFootage();
   $("enhanceIcon").innerHTML = icon("sparkles", 13);
   el.enhanceToggle.checked = prefGet("bgstudio.enhance") === "1";
   el.enhanceToggle.onchange = () => { prefSet("bgstudio.enhance", el.enhanceToggle.checked ? "1" : "0"); renderEnhanceField(); };
@@ -1782,6 +1917,8 @@ function init() {
   el.keyScale.oninput = () => { key.scale = Number(el.keyScale.value) / 100; composeKey(); };
   el.keyFlip.onclick = () => { key.flip = !key.flip; keyControls(); composeKey(); };
   el.keyDownload.onclick = downloadKeyPreview;
+  $("keyLibSaveIcon").innerHTML = icon("library", 13);
+  el.keyLibSave.onclick = saveKeyComposite;
   let kdrag = null;
   el.lbKeyCanvas.addEventListener("pointerdown", (e) => {
     if (!key.on || !key.keyed) return;

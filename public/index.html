@@ -35,6 +35,33 @@
       </a>
     </div>
 
+    <!-- Match my footage — generate a background from a green-screen still -->
+    <div class="field" id="footageField">
+      <label class="switch">
+        <input type="checkbox" id="footageToggle" />
+        <span class="track"><span class="knob"></span></span>
+        <span class="switch-label">Match my footage <span class="hint narrow-hide">— outpaint a scene from a green‑screen still</span></span>
+      </label>
+      <div class="footage-body" id="footageBody" hidden>
+        <div class="dropzone" id="footageDrop" tabindex="0">
+          <span id="footageDropText">Drop your green‑screen still here, or click to choose</span>
+          <input type="file" id="footageInput" accept="image/*" hidden />
+        </div>
+        <div class="footage-still" id="footageStill" hidden></div>
+        <div class="footage-opts">
+          <div class="control">
+            <p class="microlabel">Mode</p>
+            <div class="chips" id="footageModeChips"></div>
+          </div>
+          <div class="control" id="footageSpaceCtrl">
+            <p class="microlabel">Leave space for me</p>
+            <div class="chips" id="footageSpaceChips"></div>
+          </div>
+        </div>
+        <p class="microlabel footage-hint" id="footageHint"></p>
+      </div>
+    </div>
+
     <!-- Base image — persistent drop target; drag a library card here to adjust it -->
     <div class="field" id="baseField">
       <p class="microlabel" id="baseLabel">Base image <span class="hint narrow-hide">drag a library card here, or use a card's Adjust button</span></p>
@@ -46,7 +73,7 @@
     </div>
 
     <!-- Reference / object uploads -->
-    <div class="field">
+    <div class="field" id="refField">
       <p class="microlabel" id="uploadLabel">Reference images <span class="hint narrow-hide">optional — steers the look</span></p>
       <div class="dropzone" id="dropzone" tabindex="0">
         <span id="dropText">Drop images here, or click to choose — used as visual references</span>
@@ -286,6 +313,7 @@
       <label class="lb-range">Size <input type="range" id="keyScale" min="30" max="150" step="1" /></label>
       <button class="chip" id="keyFlip" type="button">Flip</button>
       <button class="btn small" id="keyDownload" type="button"><span id="keyDownloadIcon"></span> Save preview</button>
+      <button class="btn small" id="keyLibSave" type="button"><span id="keyLibSaveIcon"></span> Save to library</button>
     </div>
     <div class="lb-filter-ctrls" id="lbFilterCtrls" hidden>
       <div class="chips" id="filterPresets">

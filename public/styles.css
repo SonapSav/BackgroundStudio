@@ -542,6 +542,17 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 }
 .toast.err { color: var(--danger); border-color: rgba(255,111,111,.4); background: rgba(255,111,111,.1); }
 
+/* --- Match my footage ----------------------------------------------------- */
+.footage-body { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+.footage-still { position: relative; align-self: flex-start; max-width: 320px; }
+.footage-still img { display: block; width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); }
+.footage-still .x {
+  position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%;
+  border: none; background: rgba(0,0,0,.6); color: #fff; cursor: pointer; font-size: 12px; line-height: 24px; padding: 0;
+}
+.footage-opts { display: flex; gap: 22px; flex-wrap: wrap; }
+.footage-hint { color: var(--faint); margin: 0; }
+
 /* --- Meta row (model / estimate) ------------------------------------------ */
 .metarow {
   display: flex; align-items: stretch; margin-bottom: 14px;

@@ -402,14 +402,15 @@ app.post("/api/upscale", async (req, res, next) => {
 app.post("/api/filtered", async (req, res, next) => {
   try {
     const { sourceId, image, label } = req.body || {};
+    const kind = req.body && req.body.kind === "composite" ? "composite" : "filter";
     const source = await library.get(sourceId);
     if (!source) return res.status(404).json({ error: "Source image not found." });
     const { bytes, mediaType } = decodeImageDataUri(image, "image");
 
     const record = await library.add(
       {
-        kind: "filter",
-        prompt: (label || "Filtered background").toString().slice(0, 300),
+        kind,
+        prompt: (label || (kind === "composite" ? "Composite" : "Filtered background")).toString().slice(0, 300),
         seed: null,
         parentId: source.id,
         aspectRatio: source.aspectRatio || null,
@@ -418,7 +419,7 @@ app.post("/api/filtered", async (req, res, next) => {
         cost: 0,
         model: null,
         extraImageCount: 0,
-        edit: { mode: "filter" },
+        edit: { mode: kind },
       },
       bytes,
       mediaType
