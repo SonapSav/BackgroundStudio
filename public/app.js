@@ -213,7 +213,7 @@ const el = {
   sortSel: $("sortSel"), perPageSel: $("perPageSel"), pagination: $("pagination"),
   librarySearch: $("librarySearch"), favFilter: $("favFilter"),
   lightbox: $("lightbox"), lightboxImg: $("lightboxImg"), lightboxClose: $("lightboxClose"),
-  lbStage: $("lbStage"), lbOverlay: $("lbOverlay"), lbGrid: $("lbGrid"), lbSubject: $("lbSubject"),
+  lbStage: $("lbStage"), lbTools: $("lbTools"), lbOverlay: $("lbOverlay"), lbGrid: $("lbGrid"), lbSubject: $("lbSubject"),
   guideToggle: $("guideToggle"), lbGuideCtrls: $("lbGuideCtrls"), subjSize: $("subjSize"),
   subjFlip: $("subjFlip"), gridToggle: $("gridToggle"),
   compareToggle: $("compareToggle"), lbBefore: $("lbBefore"), lbDivider: $("lbDivider"),
@@ -1430,6 +1430,11 @@ function renderFilterCanvas() {
   stageCanvasSize(el.lbFilterCanvas, img.naturalWidth || 1280, img.naturalHeight || 720);
   paintGrade(el.lbFilterCanvas.getContext("2d"), img, el.lbFilterCanvas.width, el.lbFilterCanvas.height);
 }
+// Size the tools column to match the displayed photo, so the filter rows span the same width.
+function syncToolsWidth() {
+  const w = el.lbStage.getBoundingClientRect().width;
+  el.lbTools.style.width = w ? `${Math.round(w)}px` : "";
+}
 // Decide which element owns the lightbox stage: keying canvas, graded canvas, or the plain image.
 function updateStage() {
   const showKey = key.on;
@@ -1441,6 +1446,7 @@ function updateStage() {
   el.lightboxImg.style.display = (showKey || showGraded) ? "none" : "";
   if (showKey) composeKey();
   else if (showGraded) renderFilterCanvas();
+  syncToolsWidth();
 }
 // Warn when the (graded) image is heavy in chroma green/blue, which keys poorly.
 function checkKeyingSafe() {
@@ -1744,6 +1750,7 @@ function init() {
   // Lightbox
   el.lightboxClose.onclick = closeLightbox;
   el.lightbox.onclick = (e) => { if (e.target === el.lightbox) closeLightbox(); };
+  window.addEventListener("resize", () => { if (!el.lightbox.hidden) updateStage(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeLightbox(); closeRegionEditor(); closeReframe(); closeUpscale(); } });
 
   // Before/after compare

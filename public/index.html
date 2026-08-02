@@ -258,11 +258,13 @@
     <canvas id="lbKeyCanvas" class="lb-keycanvas" hidden></canvas>
     <canvas id="lbFilterCanvas" class="lb-filtercanvas" hidden></canvas>
   </div>
-  <div class="lb-tools">
-    <button class="btn small" id="compareToggle" type="button" hidden><span id="compareIcon"></span> Compare</button>
-    <button class="btn small" id="guideToggle" type="button"><span id="guideIcon"></span> Subject guide</button>
-    <button class="btn small" id="keyToggle" type="button"><span id="keyIcon"></span> Keying preview</button>
-    <button class="btn small" id="filterToggle" type="button"><span id="filterIcon"></span> Filters</button>
+  <div class="lb-tools" id="lbTools">
+    <div class="lb-toolrow">
+      <button class="btn small" id="compareToggle" type="button" hidden><span id="compareIcon"></span> Compare</button>
+      <button class="btn small" id="guideToggle" type="button"><span id="guideIcon"></span> Subject guide</button>
+      <button class="btn small" id="keyToggle" type="button"><span id="keyIcon"></span> Keying preview</button>
+      <button class="btn small" id="filterToggle" type="button"><span id="filterIcon"></span> Filters</button>
+    </div>
     <div class="lb-guide-ctrls" id="lbGuideCtrls" hidden>
       <div class="chips">
         <button class="chip" data-pos="left" type="button">Left</button>
@@ -298,16 +300,20 @@
         <button class="chip" data-fp="noir" type="button">Noir</button>
         <button class="chip" data-fp="cine" type="button">Cinema</button>
       </div>
-      <label class="lb-range">Bright <span class="lb-val" id="filBrightVal"></span> <input type="range" id="filBright" min="50" max="150" step="1" /></label>
-      <label class="lb-range">Contrast <span class="lb-val" id="filContrastVal"></span> <input type="range" id="filContrast" min="50" max="150" step="1" /></label>
-      <label class="lb-range">Saturation <span class="lb-val" id="filSatVal"></span> <input type="range" id="filSat" min="0" max="200" step="1" /></label>
-      <label class="lb-range">Blur <span class="lb-val" id="filBlurVal"></span> <input type="range" id="filBlur" min="0" max="100" step="1" /></label>
-      <label class="lb-range">Vignette <span class="lb-val" id="filVignetteVal"></span> <input type="range" id="filVignette" min="0" max="100" step="1" /></label>
-      <label class="lb-range">Grain <span class="lb-val" id="filGrainVal"></span> <input type="range" id="filGrain" min="0" max="100" step="1" /></label>
-      <button class="chip" id="filterReset" type="button">Reset</button>
-      <button class="btn small" id="filterDownload" type="button"><span id="filterDownloadIcon"></span> Download</button>
-      <button class="btn small" id="filterSave" type="button"><span id="filterSaveIcon"></span> Save to library</button>
-      <span class="lb-filter-warn" id="filterWarn" hidden><span id="filterWarnIcon"></span> Strong green/blue — may key poorly</span>
+      <div class="fil-sliders">
+        <label class="lb-range">Bright <span class="lb-val" id="filBrightVal"></span> <input type="range" id="filBright" min="50" max="150" step="1" /></label>
+        <label class="lb-range">Contrast <span class="lb-val" id="filContrastVal"></span> <input type="range" id="filContrast" min="50" max="150" step="1" /></label>
+        <label class="lb-range">Saturation <span class="lb-val" id="filSatVal"></span> <input type="range" id="filSat" min="0" max="200" step="1" /></label>
+        <label class="lb-range">Blur <span class="lb-val" id="filBlurVal"></span> <input type="range" id="filBlur" min="0" max="100" step="1" /></label>
+        <label class="lb-range">Vignette <span class="lb-val" id="filVignetteVal"></span> <input type="range" id="filVignette" min="0" max="100" step="1" /></label>
+        <label class="lb-range">Grain <span class="lb-val" id="filGrainVal"></span> <input type="range" id="filGrain" min="0" max="100" step="1" /></label>
+      </div>
+      <div class="fil-actions">
+        <button class="chip" id="filterReset" type="button">Reset</button>
+        <button class="btn small" id="filterDownload" type="button"><span id="filterDownloadIcon"></span> Download</button>
+        <button class="btn small" id="filterSave" type="button"><span id="filterSaveIcon"></span> Save to library</button>
+        <span class="lb-filter-warn" id="filterWarn" hidden><span id="filterWarnIcon"></span> Strong green/blue — may key poorly</span>
+      </div>
     </div>
   </div>
 </div>
