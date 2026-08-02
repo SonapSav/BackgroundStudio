@@ -305,11 +305,6 @@
       <label class="lb-range">Vignette <input type="range" id="filVignette" min="0" max="100" step="1" /></label>
       <label class="lb-range">Grain <input type="range" id="filGrain" min="0" max="100" step="1" /></label>
       <button class="chip" id="filterReset" type="button">Reset</button>
-      <span class="fmt-toggle" id="filterFmt" role="group" aria-label="File format">
-        <button type="button" data-fmt="jpeg">JPEG</button>
-        <button type="button" data-fmt="png">PNG</button>
-        <button type="button" data-fmt="webp">WebP</button>
-      </span>
       <button class="btn small" id="filterDownload" type="button"><span id="filterDownloadIcon"></span> Download</button>
       <button class="btn small" id="filterSave" type="button"><span id="filterSaveIcon"></span> Save to library</button>
       <span class="lb-filter-warn" id="filterWarn" hidden><span id="filterWarnIcon"></span> Strong green/blue — may key poorly</span>
@@ -330,6 +325,13 @@
   <button type="button" data-exp="orig"><span>Original</span><span class="dim" id="expOrigDim"></span></button>
   <button type="button" data-exp="1080"><span class="exp-left"><span>1080p</span><span class="help" id="exp1080Help" hidden>?<span class="help-pop">This size is larger than your image, so it isn’t available (it would just soften it). Use the <strong>Upscale</strong> action on the card first to add real detail, then export.</span></span></span><span class="dim" id="exp1080Dim"></span></button>
   <button type="button" data-exp="uhd"><span class="exp-left"><span>4K UHD</span><span class="help" id="expUhdHelp" hidden>?<span class="help-pop">This size is larger than your image, so it isn’t available (it would just soften it). Use the <strong>Upscale</strong> action on the card first to add real detail, then export.</span></span></span><span class="dim" id="expUhdDim"></span></button>
+</div>
+
+<div class="fmtmenu" id="fmtMenu" hidden>
+  <div class="fmt-head" id="fmtMenuHead">Format</div>
+  <button type="button" data-fmt="jpeg">JPEG</button>
+  <button type="button" data-fmt="png">PNG</button>
+  <button type="button" data-fmt="webp">WebP</button>
 </div>
 
 <script src="app.js"></script>

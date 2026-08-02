@@ -234,7 +234,8 @@ const el = {
   upscaleCancel: $("upscaleCancel"), upscaleGo: $("upscaleGo"),
   upscaleFileBtn: $("upscaleFileBtn"), upscaleFileInput: $("upscaleFileInput"),
   exportMenu: $("exportMenu"), expOrigDim: $("expOrigDim"), exp1080Dim: $("exp1080Dim"), expUhdDim: $("expUhdDim"),
-  exp1080Help: $("exp1080Help"), expUhdHelp: $("expUhdHelp"), exportFmt: $("exportFmt"), filterFmt: $("filterFmt"),
+  exp1080Help: $("exp1080Help"), expUhdHelp: $("expUhdHelp"), exportFmt: $("exportFmt"),
+  fmtMenu: $("fmtMenu"), fmtMenuHead: $("fmtMenuHead"),
   dropBar: $("dragDropBar"), dropOptAdjust: $("dropOptAdjust"), dropOptRef: $("dropOptRef"),
   genOverlay: $("genOverlay"), genTitle: $("genTitle"),
   regionRow: $("regionRow"), markRegionBtn: $("markRegionBtn"), regionChip: $("regionChip"),
@@ -1131,7 +1132,7 @@ function getExportFormat() {
 function setExportFormat(f) { if (EXPORT_FORMATS[f]) { prefSet("bgstudio.exportFmt", f); renderFormatToggles(); } }
 function renderFormatToggles() {
   const cur = getExportFormat();
-  [el.exportFmt, el.filterFmt].forEach((grp) => {
+  [el.exportFmt].forEach((grp) => {
     if (!grp) return;
     grp.querySelectorAll("button").forEach((b) => {
       b.hidden = b.dataset.fmt === "webp" && !webpSupported();
@@ -1139,9 +1140,9 @@ function renderFormatToggles() {
     });
   });
 }
-// Download a canvas in the chosen format.
-function exportCanvas(canvas, baseName) {
-  const f = EXPORT_FORMATS[getExportFormat()];
+// Download a canvas in the given format (falls back to the export-menu preference).
+function exportCanvas(canvas, baseName, fmt) {
+  const f = EXPORT_FORMATS[fmt] || EXPORT_FORMATS[getExportFormat()];
   const a = document.createElement("a");
   a.href = canvas.toDataURL(f.mime, f.q);
   a.download = `${baseName}.${f.ext}`;
@@ -1481,18 +1482,34 @@ function applyFilterPreset(name) { // colour grade only — blur/vignette/grain 
   Object.assign(filt, FILTER_PRESETS[name] || FILTER_PRESETS.none, { preset: name });
   renderFilter();
 }
-function downloadFiltered() {
+function downloadFiltered(fmt) {
   if (!gradeActive() || !lbRecord) return;
   const img = new Image();
   img.onload = () => {
     const c = document.createElement("canvas");
     c.width = img.naturalWidth; c.height = img.naturalHeight;
     paintGrade(c.getContext("2d"), img, c.width, c.height); // same pipeline, full resolution
-    exportCanvas(c, `background-filtered-${c.width}x${c.height}`);
+    exportCanvas(c, `background-filtered-${c.width}x${c.height}`, fmt);
   };
   img.onerror = () => toast("Couldn't load the image for export.", true);
   img.src = `/library/${lbRecord.file}`;
 }
+// A small upward dropdown of formats, shown when Download / Save is pressed.
+let pendingFmtAction = null;
+function openFmtMenu(anchorBtn, action) {
+  if (!gradeActive() || !lbRecord) { toast("Pick a filter first.", true); return; }
+  pendingFmtAction = action;
+  el.fmtMenuHead.textContent = action === "save" ? "Save as" : "Download as";
+  el.fmtMenu.querySelector('[data-fmt="webp"]').hidden = !webpSupported();
+  el.fmtMenu.hidden = false;
+  const r = anchorBtn.getBoundingClientRect(), m = el.fmtMenu.getBoundingClientRect();
+  let top = r.top - m.height - 6;   // open upward
+  if (top < 8) top = r.bottom + 6;  // flip down if there's no room above
+  const left = Math.min(r.left, window.innerWidth - m.width - 8);
+  el.fmtMenu.style.top = `${Math.max(8, top)}px`;
+  el.fmtMenu.style.left = `${Math.max(8, left)}px`;
+}
+function closeFmtMenu() { el.fmtMenu.hidden = true; pendingFmtAction = null; }
 // A short, searchable label describing the grade (+ the source prompt).
 const PRESET_NAMES = { warm: "Warm", cool: "Cool", vivid: "Vivid", muted: "Muted", vintage: "Vintage", sepia: "Sepia", bw: "B&W", noir: "Noir", cine: "Cinema" };
 function gradeLabel() {
@@ -1506,8 +1523,9 @@ function gradeLabel() {
   return `Filtered · ${grade}${src ? ` — ${src}` : ""}`;
 }
 // Bake the grade at full resolution and save it as a new library item (no AI, no cost).
-async function saveFiltered() {
+async function saveFiltered(fmt) {
   if (!gradeActive() || !lbRecord || el.filterSave.disabled) return;
+  const f = EXPORT_FORMATS[fmt] || EXPORT_FORMATS.jpeg;
   const img = el.lightboxImg; // already loaded at natural resolution
   const c = document.createElement("canvas");
   c.width = img.naturalWidth; c.height = img.naturalHeight;
@@ -1518,7 +1536,7 @@ async function saveFiltered() {
   try {
     const res = await fetch("/api/filtered", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sourceId: lbRecord.id, image: c.toDataURL("image/jpeg", 0.95), label: gradeLabel() }),
+      body: JSON.stringify({ sourceId: lbRecord.id, image: c.toDataURL(f.mime, f.q), label: gradeLabel() }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Save failed.");
@@ -1546,6 +1564,7 @@ function openLightbox(record) {
   el.lightbox.hidden = false;
 }
 function closeLightbox() {
+  closeFmtMenu();
   el.lightbox.hidden = true;
   el.lightboxImg.src = "";
   el.lbBefore.src = "";
@@ -1774,11 +1793,25 @@ function init() {
   el.filVignette.oninput = () => { filt.vignette = Number(el.filVignette.value); renderFilter(); };
   el.filGrain.oninput = () => { filt.grain = Number(el.filGrain.value); renderFilter(); };
   el.filterReset.onclick = clearFilter;
-  el.filterDownload.onclick = downloadFiltered;
+  el.filterDownload.onclick = () => openFmtMenu(el.filterDownload, "download");
   $("filterSaveIcon").innerHTML = icon("library", 13);
-  el.filterSave.onclick = saveFiltered;
-  [el.exportFmt, el.filterFmt].forEach((grp) => grp && grp.querySelectorAll("button").forEach((b) => (b.onclick = () => setExportFormat(b.dataset.fmt))));
+  el.filterSave.onclick = () => openFmtMenu(el.filterSave, "save");
+  // Card export menu keeps its persisted JPEG/PNG/WebP toggle
+  el.exportFmt.querySelectorAll("button").forEach((b) => (b.onclick = () => setExportFormat(b.dataset.fmt)));
   renderFormatToggles();
+  // Filter-panel format dropdown — pick a format to run the pending Download / Save
+  el.fmtMenu.querySelectorAll("button").forEach((b) => (b.onclick = () => {
+    const fmt = b.dataset.fmt, action = pendingFmtAction;
+    closeFmtMenu();
+    if (action === "download") downloadFiltered(fmt);
+    else if (action === "save") saveFiltered(fmt);
+  }));
+  document.addEventListener("pointerdown", (e) => {
+    if (el.fmtMenu.hidden) return;
+    if (el.fmtMenu.contains(e.target) || e.target.closest("#filterDownload, #filterSave")) return;
+    closeFmtMenu();
+  });
+  window.addEventListener("scroll", () => { if (!el.fmtMenu.hidden) closeFmtMenu(); }, true);
 
   // Subject placement guide
   el.lbSubject.innerHTML = SUBJECT_SVG;
