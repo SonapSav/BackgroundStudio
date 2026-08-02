@@ -524,9 +524,9 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 .lb-range { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
 .lb-range input[type=range] { width: 120px; accent-color: var(--accent); }
 .lb-val { display: inline-block; min-width: 26px; text-align: left; color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 650; }
-/* Slider title acts as a per-value reset — clickable, same colour, underline on hover */
-.lb-title { cursor: pointer; }
-.lb-title:hover { text-decoration: underline; }
+/* Slider title acts as a per-value reset — clickable; turns amber on hover */
+.lb-title { cursor: pointer; transition: color .12s; }
+.lb-title:hover { color: var(--accent); }
 .lightbox .close {
   position: absolute; top: 18px; right: 18px; width: 36px; height: 36px; border-radius: 999px;
   border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text); cursor: pointer;
