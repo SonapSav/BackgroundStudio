@@ -51,6 +51,10 @@ through **[OpenRouter](https://openrouter.ai)**, so all you need is an OpenRoute
 - **Describe an image** — the **Describe an image** button (in the action bar, next to *Preview prompt*)
   lets you upload any reference photo; a multimodal model then writes a reusable background‑scene prompt
   into the box, to seed variations on that look.
+- **Match my footage** — upload a still of your actual green‑screen shot and generate a background that fits it
+  (matched lighting/perspective). **Composite** keeps you in the scene (great for thumbnails); **Plate** makes an
+  empty, reusable background with a *leave‑space‑for‑me* control (left/center/right) — then the keying preview
+  auto‑loads your still so you can see the fit and save the composite.
 
 ### Edit
 - **Adjust** any library image with a new prompt — click **Adjust**, or drag a card onto the base slot
@@ -201,6 +205,14 @@ Then open **http://localhost:3016** in your browser.
 2. Set **aspect ratio**, **resolution**, **image count**, **seed**, and **keying‑safe**.
 3. Hit **Generate** — results land in the library.
 
+**Match my footage**
+
+1. Toggle **Match my footage**, drop in a still of your green‑screen shot, and describe the *scene* (pills/text —
+   just the setting, not "empty/no people"; that's added for you).
+2. Pick **Composite** (you kept, for thumbnails) or **Plate** (empty, reusable) with a **Leave space for me** side.
+3. Hit **Build plate** / **Composite**. For a plate, open it and use **Keying preview** (your still auto‑loads) to
+   check the fit, then **Save to library** for the composite.
+
 **Edit** (from any library card)
 
 - **Adjust** — describe a change, or drag the card onto the base slot. Upload an object photo to composite
@@ -257,6 +269,17 @@ The visual language ("studio console after dark" — a dark theme with an amber 
 ---
 
 ## 📋 Changelog
+
+### 1.2.0 — Match my footage — 2026-08-02
+
+- **Match my footage**: upload a green‑screen still and generate a background that fits your shot (uses the still as
+  a reference for lighting, colour and perspective).
+  - **Composite** mode keeps you and paints the scene around you (no other people) — a finished still for thumbnails.
+  - **Plate** mode builds an empty, reusable background matched to your footage, with a **Leave space for me**
+    control (left / center / right / either) and no people. Opening it auto‑loads your still into the **keying
+    preview** so you can see yourself over it.
+- The **keying preview** gains **Save to library**, storing the full‑resolution keyed composite as a new item
+  (lineage back to the background).
 
 ### 1.1.2 — Filter panel polish — 2026-08-01
 

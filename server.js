@@ -110,6 +110,7 @@ function decodeImageDataUri(value, field) {
   const uri = cleanImage(value, field); // validates it's a data: URI (or throws 400)
   const m = /^data:([^;,]+);base64,(.*)$/s.exec(uri);
   if (!m) throw badRequest(`${field} must be a base64 image data URI.`);
+  if (!m[1].startsWith("image/")) throw badRequest(`${field} must be an image.`);
   return { bytes: Buffer.from(m[2], "base64"), mediaType: m[1] };
 }
 

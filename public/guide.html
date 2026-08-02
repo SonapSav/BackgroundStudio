@@ -91,7 +91,7 @@
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
       Background Studio
     </div>
-    <span class="g-ver">User Guide · v1.1.2</span>
+    <span class="g-ver">User Guide · v1.2.0</span>
   </div>
 </div>
 
@@ -105,13 +105,14 @@
       <a href="#prompts">2 · Writing a prompt</a>
       <a href="#settings">3 · Output settings</a>
       <a href="#generating">4 · Generating</a>
-      <a href="#editing">5 · Editing an image</a>
-      <a href="#reviewing">6 · Reviewing your shot</a>
-      <a href="#filters">7 · Filters &amp; grading</a>
-      <a href="#exporting">8 · Exporting</a>
-      <a href="#library">9 · The library</a>
-      <a href="#tips">10 · Tips &amp; good to know</a>
-      <a href="#shortcuts">11 · Shortcuts</a>
+      <a href="#footage">5 · Match my footage</a>
+      <a href="#editing">6 · Editing an image</a>
+      <a href="#reviewing">7 · Reviewing your shot</a>
+      <a href="#filters">8 · Filters &amp; grading</a>
+      <a href="#exporting">9 · Exporting</a>
+      <a href="#library">10 · The library</a>
+      <a href="#tips">11 · Tips &amp; good to know</a>
+      <a href="#shortcuts">12 · Shortcuts</a>
     </nav>
   </aside>
 
@@ -230,9 +231,37 @@
       </div>
     </section>
 
+    <!-- ============ MATCH MY FOOTAGE ============ -->
+    <section class="g-sec" id="footage">
+      <h2><span class="g-num">5</span> Match my footage</h2>
+      <p>Instead of guessing, start from a <strong>still of your actual green-screen shot</strong> and generate a background
+        that fits it. Flip on <span class="pill-ref">Match my footage</span> in the compose panel, drop in a still, describe
+        the scene with pills/text, and pick a mode. The still is used as a reference for lighting, colour and perspective, so
+        the result matches your set.</p>
+
+      <h3>Two modes</h3>
+      <ul>
+        <li><strong>Composite</strong> — keeps you and paints the scene around you (no other people). A finished still —
+          great for <strong>thumbnails</strong>.</li>
+        <li><strong>Plate</strong> — an <strong>empty</strong> background matched to your still's light &amp; perspective
+          (no people), with a <strong>Leave space for me</strong> control (left / center / right / either) so there's room
+          for you. This is the reusable background you key your <em>video</em> over. It's saved to the library; open it and
+          the <strong>Keying preview auto-loads your still</strong> so you can see the fit — then <strong>Save to library</strong>
+          keeps the composite too if you want it.</li>
+      </ul>
+
+      <div class="g-callout">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        <p>Describe <strong>only the scene</strong> (the setting, style, mood, key objects) — the app adds the rest
+          ("empty · no people · leave space · match my still's lighting") automatically. Tip: <strong>skip the Light &amp; Time
+          pills</strong> so the model matches your footage's real lighting, and keep the busiest props off to the sides.
+          The aspect ratio is taken from your still.</p>
+      </div>
+    </section>
+
     <!-- ============ EDITING ============ -->
     <section class="g-sec" id="editing">
-      <h2><span class="g-num">5</span> Editing an image</h2>
+      <h2><span class="g-num">6</span> Editing an image</h2>
       <p>Every result can be edited without starting from scratch. Editing always produces a <strong>new</strong> image (the
         original is untouched) and links back to its parent.</p>
 
@@ -275,7 +304,7 @@
 
     <!-- ============ REVIEWING ============ -->
     <section class="g-sec" id="reviewing">
-      <h2><span class="g-num">6</span> Reviewing your shot</h2>
+      <h2><span class="g-num">7</span> Reviewing your shot</h2>
       <p>Click any image to open it full-size. The lightbox has three review tools (one at a time):</p>
 
       <h3>Keying preview — see yourself in the shot</h3>
@@ -301,7 +330,7 @@
 
     <!-- ============ FILTERS ============ -->
     <section class="g-sec" id="filters">
-      <h2><span class="g-num">7</span> Filters &amp; grading</h2>
+      <h2><span class="g-num">8</span> Filters &amp; grading</h2>
       <p>Open any image, click <span class="pill-ref">Filters</span>, and grade it right in the browser — no AI, no cost,
         instant. Filters are <strong>non-destructive</strong>: the original is never changed, and everything resets when you
         close the image. The <em>same</em> render drives the live preview, the keying preview, and whatever you export, so
@@ -341,7 +370,7 @@
 
     <!-- ============ EXPORTING ============ -->
     <section class="g-sec" id="exporting">
-      <h2><span class="g-num">8</span> Exporting</h2>
+      <h2><span class="g-num">9</span> Exporting</h2>
       <p>Click <span class="pill-ref">Download</span> on a card and choose a size:</p>
       <ul>
         <li><strong>Original</strong> — the file exactly as generated.</li>
@@ -364,7 +393,7 @@
 
     <!-- ============ LIBRARY ============ -->
     <section class="g-sec" id="library">
-      <h2><span class="g-num">9</span> The library</h2>
+      <h2><span class="g-num">10</span> The library</h2>
       <p>Everything you generate or edit is saved <strong>locally</strong> and listed newest-first. From here you can:</p>
       <ul>
         <li><strong>Search</strong> by prompt text.</li>
@@ -378,7 +407,7 @@
 
     <!-- ============ TIPS ============ -->
     <section class="g-sec" id="tips">
-      <h2><span class="g-num">10</span> Tips &amp; good to know</h2>
+      <h2><span class="g-num">11</span> Tips &amp; good to know</h2>
       <div class="g-card">
         <h3>Get clean keys</h3>
         <p>Turn <strong>Keying-safe</strong> on for anything you'll composite, then use the <strong>Keying preview</strong> to
@@ -405,7 +434,7 @@
 
     <!-- ============ SHORTCUTS ============ -->
     <section class="g-sec" id="shortcuts">
-      <h2><span class="g-num">11</span> Shortcuts &amp; interactions</h2>
+      <h2><span class="g-num">12</span> Shortcuts &amp; interactions</h2>
       <ul>
         <li><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Enter</kbd> in the prompt box — <strong>Generate</strong>.</li>
         <li><strong>Drag a library card</strong> onto the base slot to adjust it; drop onto the reference area to use it as a
@@ -419,7 +448,7 @@
     </section>
 
     <div class="g-foot">
-      Background Studio · User Guide · v1.1.2<br />
+      Background Studio · User Guide · v1.2.0<br />
       Images by Nano Banana Pro (Gemini 3 Pro Image) via OpenRouter. Runs locally on your machine.
     </div>
   </main>
