@@ -225,6 +225,8 @@ const el = {
   filterToggle: $("filterToggle"), lbFilterCtrls: $("lbFilterCtrls"), filterPresets: $("filterPresets"),
   filBright: $("filBright"), filContrast: $("filContrast"), filSat: $("filSat"), filBlur: $("filBlur"),
   filVignette: $("filVignette"), filGrain: $("filGrain"), filterWarn: $("filterWarn"),
+  filBrightVal: $("filBrightVal"), filContrastVal: $("filContrastVal"), filSatVal: $("filSatVal"),
+  filBlurVal: $("filBlurVal"), filVignetteVal: $("filVignetteVal"), filGrainVal: $("filGrainVal"),
   lbFilterCanvas: $("lbFilterCanvas"), filterReset: $("filterReset"), filterDownload: $("filterDownload"), filterSave: $("filterSave"),
   reframeModal: $("reframeModal"), reframeFrame: $("reframeFrame"), reframeImg: $("reframeImg"),
   reframeAspects: $("reframeAspects"), reframeRes: $("reframeRes"),
@@ -1361,6 +1363,8 @@ function gradeActive() {
 // preview (display size) and the baked export (natural size) look proportionally identical.
 const MAX_BLUR_FRAC = 0.025;
 function blurPxFor(f, width) { return (f.blur / 100) * MAX_BLUR_FRAC * width; }
+// Display a %-based value (100 = neutral) as a signed offset in parens: 100->"(0)", 115->"(+15)".
+function filRel(v) { const d = v - 100; return `(${d > 0 ? "+" : ""}${d})`; }
 function colorFilter(f) {
   return `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturate}%) sepia(${f.sepia}%) grayscale(${f.grayscale}%) hue-rotate(${f.hueRotate}deg)`;
 }
@@ -1464,6 +1468,13 @@ function renderFilter() {
     el.filBlur.value = String(filt.blur);
     el.filVignette.value = String(filt.vignette);
     el.filGrain.value = String(filt.grain);
+    // Bright/Contrast/Saturation are % (100 = neutral) → show as an offset from neutral; the rest are raw 0-100.
+    el.filBrightVal.textContent = filRel(filt.brightness);
+    el.filContrastVal.textContent = filRel(filt.contrast);
+    el.filSatVal.textContent = filRel(filt.saturate);
+    el.filBlurVal.textContent = `(${filt.blur})`;
+    el.filVignetteVal.textContent = `(${filt.vignette})`;
+    el.filGrainVal.textContent = `(${filt.grain})`;
     el.filterPresets.querySelectorAll(".chip").forEach((b) => b.classList.toggle("active", b.dataset.fp === filt.preset));
     checkKeyingSafe();
   }
