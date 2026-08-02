@@ -258,6 +258,16 @@ The visual language ("studio console after dark" — a dark theme with an amber 
 
 ## 📋 Changelog
 
+### 1.1.2 — Filter panel polish — 2026-08-01
+
+- Format is now chosen from a small **upward dropdown** when you Download or Save from the Filters panel
+  (Save supports PNG / WebP too, not just JPEG).
+- Each slider shows its **live value** next to the title (0 = neutral for Bright/Contrast/Saturation);
+  **click a title** to reset just that value.
+- The tools row now spans the **full photo width** and lays the filters out in tidy rows (toggles · presets ·
+  sliders · actions); slider labels tightened so all six fit one line on wide screens.
+- No stage "pump" when switching between None and a preset.
+
 ### 1.1.1 — Export formats — 2026-08-01
 
 - **JPEG / PNG / WebP** export toggle on the download menu and the Filters panel (remembered between sessions),
