@@ -553,7 +553,7 @@ function renderFootage() {
 
   buildChips(el.footageModeChips, ["Composite", "Plate"], () => state.footage.mode, (v) => { state.footage.mode = v; renderFootage(); });
   el.footageSpaceCtrl.hidden = state.footage.mode !== "Plate";
-  buildChips(el.footageSpaceChips, ["Left", "Center", "Right", "Either"], () => state.footage.space, (v) => { state.footage.space = v; });
+  buildChips(el.footageSpaceChips, ["Left", "Center", "Right", "Either"], () => state.footage.space, (v) => { state.footage.space = v; renderFootage(); });
   el.footageHint.textContent = on ? footageHintText() : "";
 
   if (state.footage.still) {
