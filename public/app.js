@@ -1811,6 +1811,14 @@ function init() {
   el.filVignette.oninput = () => { filt.vignette = Number(el.filVignette.value); renderFilter(); };
   el.filGrain.oninput = () => { filt.grain = Number(el.filGrain.value); renderFilter(); };
   el.filterReset.onclick = clearFilter;
+  // Click a slider's title to reset just that value to its default (leaves the rest of the grade).
+  el.lbFilterCtrls.querySelectorAll(".lb-title[data-fk]").forEach((t) => (t.onclick = (e) => {
+    e.preventDefault();
+    const k = t.dataset.fk;
+    filt[k] = FILT_DEFAULT[k];
+    if (k === "brightness" || k === "contrast" || k === "saturate") filt.preset = "custom";
+    renderFilter();
+  }));
   el.filterDownload.onclick = () => openFmtMenu(el.filterDownload, "download");
   $("filterSaveIcon").innerHTML = icon("library", 13);
   el.filterSave.onclick = () => openFmtMenu(el.filterSave, "save");
